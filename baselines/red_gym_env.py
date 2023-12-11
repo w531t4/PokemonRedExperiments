@@ -15,16 +15,33 @@ from pyboy import PyBoy
 from pyboy.logger import log_level
 import mediapy as media
 import pandas as pd
+from typing import TypedDict, Dict, Union, List, Tuple, Any
 
 from gymnasium import Env, spaces
 from pyboy.utils import WindowEvent
 
+class RGEnvConfig(TypedDict):
+    debug: bool
+    headless: bool
+    save_final_state: bool
+    action_freq: int
+    init_state: str
+    max_steps: int
+    print_rewards: bool
+    save_video: bool
+    fast_video: bool
+    session_path: Path
+    gb_path: str
+    sim_frame_dist: float
+    use_screen_explore: bool
+    reward_scale: int
+    extra_buttons: bool
+    explore_weight: int
+
 class RedGymEnv(Env):
-
-
     def __init__(self,
-                 config=None,
-                 ):
+                 config: RGEnvConfig = None,
+                 ) -> None:
         self.debug = config['debug']
         self.s_path = config['session_path']
         self.save_final_state = config['save_final_state']
@@ -49,7 +66,7 @@ class RedGymEnv(Env):
         self.instance_id = str(uuid.uuid4())[:8] if 'instance_id' not in config else config['instance_id']
         self.s_path.mkdir(exist_ok=True)
         self.reset_count = 0
-        self.all_runs = []
+        self.all_runs: List[Dict[str, Union[int, float]]] = []
 
         # Set this in SOME subclasses
         self.metadata = {"render.modes": []}
@@ -117,8 +134,8 @@ class RedGymEnv(Env):
         self.reset()
 
     def reset(self,
-              seed=None,
-              ):
+              seed: Any = None,
+              ) -> Tuple[np.ndarray, dict]:
         self.seed = seed
         # restart game, skipping credits
         with open(self.init_state, "rb") as f:
@@ -143,7 +160,7 @@ class RedGymEnv(Env):
                                       dtype=np.uint8,
                                       )
 
-        self.agent_stats = []
+        self.agent_stats: List[Dict[str, Union[int, str, List[int], float]]] = []
 
         if self.save_video:
             base_dir = self.s_path / Path('rollouts')
@@ -170,7 +187,7 @@ class RedGymEnv(Env):
         self.reset_count += 1
         return self.render(), {}
 
-    def init_knn(self):
+    def init_knn(self) -> None:
         # Declaring index
         self.knn_index = hnswlib.Index(space='l2',
                                        dim=self.vec_dim,
@@ -181,14 +198,14 @@ class RedGymEnv(Env):
                                   M=16,
                                   )
 
-    def init_map_mem(self):
-        self.seen_coords = {}
+    def init_map_mem(self) -> None:
+        self.seen_coords: Dict[str, int] = {}
 
     def render(self,
-               reduce_res=True,
-               add_memory=True,
-               update_mem=True,
-               ):
+               reduce_res: bool = True,
+               add_memory: bool = True,
+               update_mem: bool = True,
+               ) -> np.ndarray:
         game_pixels_render = self.screen.screen_ndarray() # (144, 160, 3)
         if reduce_res:
             game_pixels_render = (255*resize(game_pixels_render,
@@ -215,8 +232,8 @@ class RedGymEnv(Env):
         return game_pixels_render
 
     def step(self,
-             action,
-             ):
+             action: int,
+             ) -> Tuple[np.ndarray, float, bool, bool, dict]:
 
         self.run_action_on_emulator(action)
         self.append_agent_stats(action)
@@ -229,7 +246,7 @@ class RedGymEnv(Env):
 
         # trim off memory from frame for knn index
         frame_start = 2 * (self.memory_height + self.mem_padding)
-        obs_flat = obs_memory[frame_start:frame_start+self.output_shape[0],
+        obs_flat: np.float32 = obs_memory[frame_start:frame_start+self.output_shape[0],
                               ...].flatten().astype(np.float32)
 
         if self.use_screen_explore:
@@ -265,7 +282,7 @@ class RedGymEnv(Env):
                 {},
         )
 
-    def run_action_on_emulator(self, action):
+    def run_action_on_emulator(self, action: int) -> None:
         # press button then release after some steps
         self.pyboy.send_input(self.valid_actions[action])
         # disable rendering when we don't need it
@@ -290,7 +307,7 @@ class RedGymEnv(Env):
         if self.save_video and self.fast_video:
             self.add_video_frame()
 
-    def add_video_frame(self):
+    def add_video_frame(self) -> None:
         self.full_frame_writer.add_image(self.render(reduce_res=False,
                                                      update_mem=False,
                                                      ))
@@ -299,8 +316,8 @@ class RedGymEnv(Env):
                                                       ))
 
     def append_agent_stats(self,
-                           action,
-                           ):
+                           action: int,
+                           ) -> None:
         x_pos = self.read_m(0xD362)
         y_pos = self.read_m(0xD361)
         map_n = self.read_m(0xD35E)
@@ -311,8 +328,10 @@ class RedGymEnv(Env):
                                            0xD23C,
                                            0xD268,
                                            ]]
+        expl: Tuple[str, int]
         if self.use_screen_explore:
             expl = ('frames',
+                    # self.khn_index.get_current_count returns int
                     self.knn_index.get_current_count())
         else:
             expl = ('coord_count',
@@ -336,18 +355,21 @@ class RedGymEnv(Env):
         })
 
     def update_frame_knn_index(self,
-                               frame_vec,
-                               ):
+                               frame_vec: np.float32,
+                               ) -> None:
 
         if self.get_levels_sum() >= 22 and not self.levels_satisfied:
             self.levels_satisfied = True
+            # self.khn_index.get_current_count returns int
             self.base_explore = self.knn_index.get_current_count()
             self.init_knn()
 
+        # self.khn_index.get_current_count returns int
         if self.knn_index.get_current_count() == 0:
             # if index is empty add current frame
-            self.knn_index.add_items(
-                frame_vec, np.array([self.knn_index.get_current_count()])
+            self.knn_index.add_items(# self.khn_index.get_current_count returns int
+                                     frame_vec,
+                                     np.array([self.knn_index.get_current_count()]),
             )
         else:
             # check for nearest frame and add if current
@@ -357,10 +379,11 @@ class RedGymEnv(Env):
             if distances[0][0] > self.similar_frame_dist:
                 # print(f"distances[0][0] : {distances[0][0]} similar_frame_dist : {self.similar_frame_dist}")
                 self.knn_index.add_items(
+                    # self.khn_index.get_current_count returns int
                     frame_vec, np.array([self.knn_index.get_current_count()])
                 )
 
-    def update_seen_coords(self):
+    def update_seen_coords(self) -> None:
         x_pos = self.read_m(0xD362)
         y_pos = self.read_m(0xD361)
         map_n = self.read_m(0xD35E)
@@ -372,7 +395,7 @@ class RedGymEnv(Env):
 
         self.seen_coords[coord_string] = self.step_count
 
-    def update_reward(self):
+    def update_reward(self) -> Tuple[Union[int, float], Tuple[float, float, float]]:
         # compute reward
         old_prog = self.group_rewards()
         self.progress_reward = self.get_game_state_reward()
@@ -391,7 +414,7 @@ class RedGymEnv(Env):
                  ),
                )
 
-    def group_rewards(self):
+    def group_rewards(self) -> Tuple[float, float, float]:
         prog = self.progress_reward
         # these values are only used by memory
         return (prog['level'] * 100 / self.reward_scale,
@@ -401,11 +424,11 @@ class RedGymEnv(Env):
                # prog['levels'] + prog['party_xp'],
                # prog['explore'])
 
-    def create_exploration_memory(self):
+    def create_exploration_memory(self) -> np.ndarray:
         w = self.output_shape[1]
         h = self.memory_height
 
-        def make_reward_channel(r_val):
+        def make_reward_channel(r_val: float) -> np.ndarray:
             col_steps = self.col_steps
             max_r_val = (w-1) * h * col_steps
             # truncate progress bar. if hitting this
@@ -439,13 +462,13 @@ class RedGymEnv(Env):
 
         return full_memory
 
-    def create_recent_memory(self):
+    def create_recent_memory(self) -> np.ndarray:
         return rearrange(self.recent_memory,
                          '(w h) c -> h w c',
                          h=self.memory_height,
                          )
 
-    def check_if_done(self):
+    def check_if_done(self) -> bool:
         if self.early_stopping:
             done = False
             if self.step_count > 128 and self.recent_memory.sum() < (255 * 1):
@@ -456,9 +479,9 @@ class RedGymEnv(Env):
         return done
 
     def save_and_print_info(self,
-                            done,
-                            obs_memory,
-                            ):
+                            done: bool,
+                            obs_memory: np.ndarray,
+                            ) -> None:
         if self.print_rewards:
             prog_string = f'step: {self.step_count:6d}'
             for key, val in self.progress_reward.items():
@@ -500,8 +523,8 @@ class RedGymEnv(Env):
                                                   )
 
     def read_m(self,
-               addr,
-               ):
+               addr: int,
+               ) -> int:
         return self.pyboy.get_memory_value(addr)
 
     def read_bit(self,
@@ -521,7 +544,7 @@ class RedGymEnv(Env):
                                                             ]]
         return max(sum(poke_levels) - 4, 0) # subtract starting pokemon level
 
-    def get_levels_reward(self):
+    def get_levels_reward(self) -> float:
         explore_thresh = 22
         scale_factor = 4
         level_sum = self.get_levels_sum()
@@ -534,10 +557,11 @@ class RedGymEnv(Env):
                                  )
         return self.max_level_rew
 
-    def get_knn_reward(self):
+    def get_knn_reward(self) -> float:
 
         pre_rew = self.explore_weight * 0.005
         post_rew = self.explore_weight * 0.01
+        # self.khn_index.get_current_count returns int
         cur_size = self.knn_index.get_current_count() if self.use_screen_explore else len(self.seen_coords)
         base = (self.base_explore if self.levels_satisfied else cur_size) * pre_rew
         post = (cur_size if self.levels_satisfied else 0) * post_rew
@@ -569,7 +593,7 @@ class RedGymEnv(Env):
             else:
                 self.died_count += 1
 
-    def get_all_events_reward(self):
+    def get_all_events_reward(self) -> int:
         # adds up all event flags, exclude museum ticket
         event_flags_start = 0xD747
         event_flags_end = 0xD886
@@ -589,7 +613,7 @@ class RedGymEnv(Env):
 
     def get_game_state_reward(self,
                               print_stats=False,
-                              ):
+                              ) -> Dict[str, Union[int, float]]:
         # addresses from https://datacrystal.romhacking.net/wiki/Pok%C3%A9mon_Red/Blue:RAM_map
         # https://github.com/pret/pokered/blob/91dc3c9f9c8fd529bb6e8307b58b96efa0bec67e/constants/event_constants.asm
         '''
@@ -630,15 +654,15 @@ class RedGymEnv(Env):
         return state_scores
 
     def save_screenshot(self,
-                        name,
-                        ):
+                        name: str,
+                        ) -> None:
         ss_dir = self.s_path / Path('screenshots')
         ss_dir.mkdir(exist_ok=True)
         plt.imsave(ss_dir / Path(f'frame{self.instance_id}_r{self.total_reward:.4f}_{self.reset_count}_{name}.jpeg'),
                    self.render(reduce_res=False),
                    )
 
-    def update_max_op_level(self):
+    def update_max_op_level(self) -> float:
         #opponent_level = self.read_m(0xCFE8) - 5 # base level
         opponent_level = max([self.read_m(a) for a in [0xD8C5,
                                                        0xD8F1,
@@ -654,14 +678,14 @@ class RedGymEnv(Env):
                                       )
         return self.max_opponent_level * 0.2
 
-    def update_max_event_rew(self):
+    def update_max_event_rew(self) -> int:
         cur_rew = self.get_all_events_reward()
         self.max_event_rew = max(cur_rew,
                                  self.max_event_rew,
                                  )
         return self.max_event_rew
 
-    def read_hp_fraction(self):
+    def read_hp_fraction(self) -> float:
         hp_sum = sum([self.read_hp(add) for add in [0xD16C,
                                                     0xD198,
                                                     0xD1C4,
@@ -680,34 +704,34 @@ class RedGymEnv(Env):
         return hp_sum / max_hp_sum
 
     def read_hp(self,
-                start,
-                ):
+                start: int,
+                ) -> int:
         return 256 * self.read_m(start) + self.read_m(start+1)
 
     # built-in since python 3.10
     def bit_count(self,
-                  bits,
-                  ):
+                  bits: int,
+                  ) -> int:
         return bin(bits).count('1')
 
     def read_triple(self,
-                    start_add,
-                    ):
+                    start_add: int,
+                    ) -> int:
         return 256*256*self.read_m(start_add) + 256*self.read_m(start_add+1) + self.read_m(start_add+2)
 
     def read_bcd(self,
-                 num,
-                 ):
+                 num: int,
+                 ) -> int:
         return 10 * ((num >> 4) & 0x0f) + (num & 0x0f)
 
-    def read_money(self):
+    def read_money(self) -> int:
         return (100 * 100 * self.read_bcd(self.read_m(0xD347)) +
                 100 * self.read_bcd(self.read_m(0xD348)) +
                 self.read_bcd(self.read_m(0xD349)))
 
     def get_map_location(self,
-                         map_idx,
-                         ):
+                         map_idx: int,
+                         ) -> str:
         map_locations = {
             0: "Pallet Town",
             1: "Viridian City",

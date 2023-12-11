@@ -1,7 +1,8 @@
 from os.path import exists
 from pathlib import Path
 import uuid
-from red_gym_env import RedGymEnv
+from typing import Dict, Union, List
+from red_gym_env import RedGymEnv, RGEnvConfig
 from stable_baselines3 import PPO
 from stable_baselines3.common import env_checker
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
@@ -9,9 +10,9 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from tensorboard_callback import TensorboardCallback
 
-def make_env(rank,
-             env_conf,
-             seed=0,
+def make_env(rank: int,
+             env_conf: Dict[str, Union[bool, int, str, float]],
+             seed: int = 0,
              ):
     """
     Utility function for multiprocessed env.
@@ -34,7 +35,7 @@ if __name__ == '__main__':
     sess_id = str(uuid.uuid4())[:8]
     sess_path = Path(f'session_{sess_id}')
 
-    env_config = {'headless': True,
+    env_config: RGEnvConfig = {'headless': True,
                   'save_final_state': True,
                   'early_stop': False,
                   'action_freq': 24,
@@ -55,6 +56,7 @@ if __name__ == '__main__':
 
     print(env_config)
 
+    num_cpu = 52  # Also sets the number of episodes per training iteration
     env = SubprocVecEnv([make_env(rank=i,
                                   env_conf=env_config,
                                   ) for i in range(num_cpu)])
@@ -63,9 +65,10 @@ if __name__ == '__main__':
                                              save_path=sess_path,
                                              name_prefix='poke',
                                              )
-    callbacks = [checkpoint_callback,
-                 TensorboardCallback(),
-                 ]
+    callbacks: List[Union[CheckpointCallback,
+                          TensorboardCallback]] = [checkpoint_callback,
+                                                   TensorboardCallback(),
+                                                   ]
 
     if use_wandb_logging:
         import wandb
@@ -83,8 +86,8 @@ if __name__ == '__main__':
     #env_checker.check_env(env)
     learn_steps = 40
     # put a checkpoint here you want to start from
-    file_name = 'session_e41c9eff/poke_38207488_steps'
-
+    #file_name = 'session_e41c9eff/poke_38207488_steps'
+    file_name = 'session_bde95210/poke_8519680_steps'
     if exists(file_name + '.zip'):
         print('\nloading checkpoint')
         model = PPO.load(file_name, env=env)
