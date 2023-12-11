@@ -23,9 +23,14 @@ def get_sprite_by_coords(img,
                          ):
     sy = 34+17*y
     sx = 9 +17*x
-    alpha_v = np.array([255, 127,  39, 255], dtype=np.uint8)
+    alpha_v = np.array([255, 127,  39, 255],
+                       dtype=np.uint8,
+                       )
     sprite = img[sy:sy+16, sx:sx+16]
-    return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1), np.array([[[0,0,0,0]]]), sprite).astype(np.uint8)
+    return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1),
+                    np.array([[[0,0,0,0]]]),
+                    sprite,
+                    ).astype(np.uint8)
 
 def game_coord_to_global_coord(x,
                                y,
@@ -81,7 +86,8 @@ def add_sprite(overlay_map,
                sprite,
                coord,
                ):
-    raw_base = (overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :])
+    raw_base = (overlay_map[coord[1]:coord[1]+16,
+                            coord[0]:coord[0]+16, :])
     intermediate = raw_base
     mask = sprite[:, :, 3] != 0
     if (mask.shape != intermediate[:,:,0].shape):
@@ -92,12 +98,16 @@ def add_sprite(overlay_map,
         return {'coords': coord}
     else:
         intermediate[mask] = sprite[mask]
-    overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :] = intermediate
+    overlay_map[coord[1]:coord[1]+16,
+                coord[0]:coord[0]+16, :] = intermediate
 
 def blend_overlay(background,
                   over,
                   ):
-    al = over[...,3].reshape(over.shape[0], over.shape[1], 1)
+    al = over[...,3].reshape(over.shape[0],
+                             over.shape[1],
+                             1,
+                             )
     ba = (255-al)/255
     oa = al/255
     return (background[..., :3]*ba + over[..., :3]*oa).astype(np.uint8)
@@ -114,14 +124,22 @@ def compute_flow(all_coords,
     sprites_rendered = 0
     all_flows = {}
     step_count = len(all_coords)
-    state = [{'dir': 0, 'map': 40} for _ in all_coords[0]]
-    pbar = tqdm(range(0, step_count))
+    state = [{'dir': 0,
+              'map': 40,
+              } for _ in all_coords[0]]
+    pbar = tqdm(range(0,
+                      step_count,
+                      ))
     for idx in pbar:
         step = all_coords[idx]
         if idx > 0:
             prev_step = all_coords[idx-1]
         elif add_start:
-            prev_step = np.tile(np.array([5, 3, 40]), (all_coords.shape[1], 1))
+            prev_step = np.tile(np.array([5, 3, 40]),
+                                (all_coords.shape[1],
+                                 1,
+                                 ),
+                                )
         else:
             prev_step = all_coords[idx]
         if debug:
@@ -153,11 +171,13 @@ def compute_flow(all_coords,
                     elif dy < 0:
                         state[run]['dir'] = 0
 
-                p_coord = game_coord_to_global_coord(
-                    cx, -cy, state[run]['map']
+                p_coord = game_coord_to_global_coord(cx,
+                                                     -cy,
+                                                     state[run]['map'],
                 )
-                prev_p_coord = game_coord_to_global_coord(
-                    px, -py, prev[2]
+                prev_p_coord = game_coord_to_global_coord(px,
+                                                          -py,
+                                                          prev[2],
                 )
                 diff = p_coord - prev_p_coord
                 #interp_coord = prev_p_coord + (fract*(diff.astype(np.float32))).astype(np.int32)
@@ -194,12 +214,26 @@ def render_arrows(fname,
     cell_dim = arrow_sprite.size[0] # use x only, assuming square
 
     #colmap = matplotlib.cm.get_cmap('husl')
-    colmap = seaborn.husl_palette(h=0.1, s=0.95, l=0.75, as_cmap=True)
+    colmap = seaborn.husl_palette(h=0.1,
+                                  s=0.95,
+                                  l=0.75,
+                                  as_cmap=True,
+                                  )
 
-    full_img = np.zeros( ((grid_dims[0]+1) * cell_dim, (grid_dims[1]+1) * cell_dim, 4 ), dtype=np.uint8)
+    full_img = np.zeros(((grid_dims[0]+1) * cell_dim,
+                         (grid_dims[1]+1) * cell_dim,
+                         4,
+                         ),
+                        dtype=np.uint8,
+                        )
 
     print("computing curl")
-    dense_flow = np.zeros( ((grid_dims[0]+1), (grid_dims[1]+1), 2), dtype=np.float32)
+    dense_flow = np.zeros(((grid_dims[0]+1),
+                           (grid_dims[1]+1),
+                           2,
+                           ),
+                          dtype=np.float32,
+                          )
     for coord, total_move in tqdm(all_flows.items()):
         dense_flow[coord[0], coord[1]] = total_move
     dFy_dx, dFy_dy = np.gradient(dense_flow[:, :, 1])
@@ -228,9 +262,13 @@ def render_arrows(fname,
         del all_flows[cord]
 
     for coord, total_move in tqdm(all_flows.items()):
-        angle = math.atan2(-total_move[0], total_move[1])
+        angle = math.atan2(-total_move[0],
+                           total_move[1],
+                           )
         #mag = math.sqrt(coord[0]**2 + coord[1]**2)
-        rotated_arrow = arrow_sprite.rotate(180*angle/math.pi, resample=Image.Resampling.BICUBIC)
+        rotated_arrow = arrow_sprite.rotate(180*angle/math.pi,
+                                            resample=Image.Resampling.BICUBIC,
+                                            )
         nx = coord[0] - min_x
         ny = coord[1] - min_y
         #color = hsv2rgb(np.array([0.5*angle/math.pi+0.5, 1.0, 1.0]))
@@ -292,26 +330,34 @@ if __name__ == '__main__':
         print(f'{coords_save_pth} not found, building...')
         dfs = []
         for run in tqdm(run_dir.glob('*.gz')):
-            tdf = pd.read_csv(run, compression='gzip')
+            tdf = pd.read_csv(run,
+                              compression='gzip',
+                              )
             dfs.append(tdf[tdf['map'] != 'map'])
 
         base_coords = make_all_coords_arrays(dfs)
         print(f'saving {coords_save_pth}')
-        np.savez_compressed(coords_save_pth, base_coords)
+        np.savez_compressed(coords_save_pth,
+                            base_coords,
+                            )
 
     print(f'initial data shape: {base_coords.shape}')
 
     main_map = np.array(Image.open('poke_map/pokemap_full_calibrated_CROPPED_1.png'))
     chars_img = np.array(Image.open('poke_map/characters.png'))
     arrow_size = 16 #32
-    arrow_img = Image.open('poke_map/transparent_arrow.png').resize((arrow_size, arrow_size))
+    arrow_img = Image.open('poke_map/transparent_arrow.png').resize((arrow_size,
+                                                                     arrow_size))
     #alpha_val = get_sprite_by_coords(chars_img, 1, 0)[0,0]
     #walks = [get_sprite_by_coords(chars_img, x, 0) for x in [1, 4, 6, 8]]
 
     procs = 8
     with Pool(procs) as p:
         run_steps = 16385
-        base_data = rearrange(base_coords, '(v s) r c -> s (v r) c', v=base_coords.shape[0]//run_steps)
+        base_data = rearrange(base_coords,
+                              '(v s) r c -> s (v r) c',
+                              v=base_coords.shape[0]//run_steps,
+                              )
         #base_data = base_data[:, ::110, :] # (16385, 26840, 3)
         print(f'base_data shape: {base_data.shape}')
         runs = base_data.shape[0] #base_data.shape[1]
@@ -329,4 +375,7 @@ if __name__ == '__main__':
                 else:
                     merged_flows[cell] = flow
 
-        render_arrows("map_flow_run1/full_combined_test_inter", merged_flows, arrow_img)
+        render_arrows("map_flow_run1/full_combined_test_inter",
+                      merged_flows,
+                      arrow_img,
+                      )

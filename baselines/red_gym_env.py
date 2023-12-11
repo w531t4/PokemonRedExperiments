@@ -86,25 +86,27 @@ class RedGymEnv(Env):
         self.mem_padding = 2
         self.memory_height = 8
         self.col_steps = 16
-        self.output_full = (
-            self.output_shape[0] * self.frame_stacks + 2 * (self.mem_padding + self.memory_height),
+        self.output_full = (self.output_shape[0] * self.frame_stacks + 2 * (self.mem_padding + self.memory_height),
                             self.output_shape[1],
-                            self.output_shape[2]
+                            self.output_shape[2],
         )
 
         # Set these in ALL subclasses
         self.action_space = spaces.Discrete(len(self.valid_actions))
-        self.observation_space = spaces.Box(low=0, high=255, shape=self.output_full, dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0,
+                                            high=255,
+                                            shape=self.output_full,
+                                            dtype=np.uint8,
+                                            )
 
         head = 'headless' if config['headless'] else 'SDL2'
 
         log_level("ERROR")
-        self.pyboy = PyBoy(
-                config['gb_path'],
-                debugging=False,
-                disable_input=False,
-                window_type=head,
-                hide_window='--quiet' in sys.argv,
+        self.pyboy = PyBoy(config['gb_path'],
+                           debugging=False,
+                           disable_input=False,
+                           window_type=head,
+                           hide_window='--quiet' in sys.argv,
             )
 
         self.screen = self.pyboy.botsupport_manager().screen()
@@ -127,12 +129,19 @@ class RedGymEnv(Env):
         else:
             self.init_map_mem()
 
-        self.recent_memory = np.zeros((self.output_shape[1]*self.memory_height, 3), dtype=np.uint8)
+        self.recent_memory = np.zeros((self.output_shape[1]*self.memory_height,
+                                       3,
+                                       ),
+                                      dtype=np.uint8,
+                                      )
 
-        self.recent_frames = np.zeros(
-            (self.frame_stacks, self.output_shape[0],
-             self.output_shape[1], self.output_shape[2]),
-            dtype=np.uint8)
+        self.recent_frames = np.zeros((self.frame_stacks,
+                                       self.output_shape[0],
+                                       self.output_shape[1],
+                                       self.output_shape[2],
+                                       ),
+                                      dtype=np.uint8,
+                                      )
 
         self.agent_stats = []
 
@@ -163,10 +172,14 @@ class RedGymEnv(Env):
 
     def init_knn(self):
         # Declaring index
-        self.knn_index = hnswlib.Index(space='l2', dim=self.vec_dim) # possible options are l2, cosine or ip
+        self.knn_index = hnswlib.Index(space='l2',
+                                       dim=self.vec_dim,
+                                       ) # possible options are l2, cosine or ip
         # Initing index - the maximum number of elements should be known beforehand
-        self.knn_index.init_index(
-            max_elements=self.num_elements, ef_construction=100, M=16)
+        self.knn_index.init_index(max_elements=self.num_elements,
+                                  ef_construction=100,
+                                  M=16,
+                                  )
 
     def init_map_mem(self):
         self.seen_coords = {}
@@ -178,22 +191,27 @@ class RedGymEnv(Env):
                ):
         game_pixels_render = self.screen.screen_ndarray() # (144, 160, 3)
         if reduce_res:
-            game_pixels_render = (255*resize(game_pixels_render, self.output_shape)).astype(np.uint8)
+            game_pixels_render = (255*resize(game_pixels_render,
+                                             self.output_shape)).astype(np.uint8)
             if update_mem:
                 self.recent_frames[0] = game_pixels_render
             if add_memory:
-                pad = np.zeros(
-                    shape=(self.mem_padding, self.output_shape[1], 3),
-                    dtype=np.uint8)
-                game_pixels_render = np.concatenate(
-                    (
-                        self.create_exploration_memory(),
-                        pad,
-                        self.create_recent_memory(),
-                        pad,
-                        rearrange(self.recent_frames, 'f h w c -> (f h) w c')
-                    ),
-                    axis=0)
+                pad = np.zeros(shape=(self.mem_padding,
+                                      self.output_shape[1],
+                                      3,
+                                     ),
+                               dtype=np.uint8,
+                               )
+                game_pixels_render = np.concatenate((self.create_exploration_memory(),
+                                                     pad,
+                                                     self.create_recent_memory(),
+                                                     pad,
+                                                     rearrange(self.recent_frames,
+                                                               'f h w c -> (f h) w c',
+                                                               ),
+                                                    ),
+                                                    axis=0,
+                                                    )
         return game_pixels_render
 
     def step(self,
@@ -203,13 +221,16 @@ class RedGymEnv(Env):
         self.run_action_on_emulator(action)
         self.append_agent_stats(action)
 
-        self.recent_frames = np.roll(self.recent_frames, 1, axis=0)
+        self.recent_frames = np.roll(self.recent_frames,
+                                     1,
+                                     axis=0,
+                                     )
         obs_memory = self.render()
 
         # trim off memory from frame for knn index
         frame_start = 2 * (self.memory_height + self.mem_padding)
-        obs_flat = obs_memory[
-            frame_start:frame_start+self.output_shape[0], ...].flatten().astype(np.float32)
+        obs_flat = obs_memory[frame_start:frame_start+self.output_shape[0],
+                              ...].flatten().astype(np.float32)
 
         if self.use_screen_explore:
             self.update_frame_knn_index(obs_flat)
@@ -231,11 +252,18 @@ class RedGymEnv(Env):
 
         step_limit_reached = self.check_if_done()
 
-        self.save_and_print_info(step_limit_reached, obs_memory)
+        self.save_and_print_info(step_limit_reached,
+                                 obs_memory,
+                                 )
 
         self.step_count += 1
 
-        return obs_memory, new_reward*0.1, False, step_limit_reached, {}
+        return (obs_memory,
+                new_reward*0.1,
+                False,
+                step_limit_reached,
+                {},
+        )
 
     def run_action_on_emulator(self, action):
         # press button then release after some steps
@@ -263,8 +291,12 @@ class RedGymEnv(Env):
             self.add_video_frame()
 
     def add_video_frame(self):
-        self.full_frame_writer.add_image(self.render(reduce_res=False, update_mem=False))
-        self.model_frame_writer.add_image(self.render(reduce_res=True, update_mem=False))
+        self.full_frame_writer.add_image(self.render(reduce_res=False,
+                                                     update_mem=False,
+                                                     ))
+        self.model_frame_writer.add_image(self.render(reduce_res=True,
+                                                      update_mem=False,
+                                                      ))
 
     def append_agent_stats(self,
                            action,
@@ -272,23 +304,35 @@ class RedGymEnv(Env):
         x_pos = self.read_m(0xD362)
         y_pos = self.read_m(0xD361)
         map_n = self.read_m(0xD35E)
-        levels = [self.read_m(a) for a in [0xD18C, 0xD1B8, 0xD1E4, 0xD210, 0xD23C, 0xD268]]
+        levels = [self.read_m(a) for a in [0xD18C,
+                                           0xD1B8,
+                                           0xD1E4,
+                                           0xD210,
+                                           0xD23C,
+                                           0xD268,
+                                           ]]
         if self.use_screen_explore:
-            expl = ('frames', self.knn_index.get_current_count())
+            expl = ('frames',
+                    self.knn_index.get_current_count())
         else:
-            expl = ('coord_count', len(self.seen_coords))
-        self.agent_stats.append({
-            'step': self.step_count, 'x': x_pos, 'y': y_pos, 'map': map_n,
-            'map_location': self.get_map_location(map_n),
-            'last_action': action,
-            'pcount': self.read_m(0xD163),
-            'levels': levels,
-            'levels_sum': sum(levels),
-            'ptypes': self.read_party(),
-            'hp': self.read_hp_fraction(),
-            expl[0]: expl[1],
-            'deaths': self.died_count, 'badge': self.get_badges(),
-            'event': self.progress_reward['event'], 'healr': self.total_healing_rew
+            expl = ('coord_count',
+                    len(self.seen_coords))
+        self.agent_stats.append({'step': self.step_count,
+                                 'x': x_pos,
+                                 'y': y_pos,
+                                 'map': map_n,
+                                 'map_location': self.get_map_location(map_n),
+                                 'last_action': action,
+                                 'pcount': self.read_m(0xD163),
+                                 'levels': levels,
+                                 'levels_sum': sum(levels),
+                                 'ptypes': self.read_party(),
+                                 'hp': self.read_hp_fraction(),
+                                 expl[0]: expl[1],
+                                 'deaths': self.died_count,
+                                 'badge': self.get_badges(),
+                                 'event': self.progress_reward['event'],
+                                 'healr': self.total_healing_rew,
         })
 
     def update_frame_knn_index(self,
@@ -307,7 +351,9 @@ class RedGymEnv(Env):
             )
         else:
             # check for nearest frame and add if current
-            labels, distances = self.knn_index.knn_query(frame_vec, k = 1)
+            labels, distances = self.knn_index.knn_query(frame_vec,
+                                                         k = 1,
+                                                         )
             if distances[0][0] > self.similar_frame_dist:
                 # print(f"distances[0][0] : {distances[0][0]} similar_frame_dist : {self.similar_frame_dist}")
                 self.knn_index.add_items(
@@ -339,9 +385,10 @@ class RedGymEnv(Env):
 
         self.total_reward = new_total
         return (new_step,
-                   (new_prog[0]-old_prog[0],
-                    new_prog[1]-old_prog[1],
-                    new_prog[2]-old_prog[2])
+                (new_prog[0]-old_prog[0],
+                 new_prog[1]-old_prog[1],
+                 new_prog[2]-old_prog[2],
+                 ),
                )
 
     def group_rewards(self):
@@ -363,9 +410,13 @@ class RedGymEnv(Env):
             max_r_val = (w-1) * h * col_steps
             # truncate progress bar. if hitting this
             # you should scale down the reward in group_rewards!
-            r_val = min(r_val, max_r_val)
+            r_val = min(r_val,
+                        max_r_val,
+                        )
             row = floor(r_val / (h * col_steps))
-            memory = np.zeros(shape=(h, w), dtype=np.uint8)
+            memory = np.zeros(shape=(h, w),
+                              dtype=np.uint8,
+                              )
             memory[:, :row] = 255
             row_covered = row * h * col_steps
             col = floor((r_val - row_covered) / col_steps)
@@ -376,11 +427,12 @@ class RedGymEnv(Env):
             return memory
 
         level, hp, explore = self.group_rewards()
-        full_memory = np.stack((
-            make_reward_channel(level),
-            make_reward_channel(hp),
-            make_reward_channel(explore)
-        ), axis=-1)
+        full_memory = np.stack((make_reward_channel(level),
+                                make_reward_channel(hp),
+                                make_reward_channel(explore)
+                                ),
+                               axis=-1,
+                               )
 
         if self.get_badges() > 0:
             full_memory[:, -1, :] = 255
@@ -388,10 +440,10 @@ class RedGymEnv(Env):
         return full_memory
 
     def create_recent_memory(self):
-        return rearrange(
-            self.recent_memory,
-            '(w h) c -> h w c',
-            h=self.memory_height)
+        return rearrange(self.recent_memory,
+                         '(w h) c -> h w c',
+                         h=self.memory_height,
+                         )
 
     def check_if_done(self):
         if self.early_stopping:
@@ -412,24 +464,27 @@ class RedGymEnv(Env):
             for key, val in self.progress_reward.items():
                 prog_string += f' {key}: {val:5.2f}'
             prog_string += f' sum: {self.total_reward:5.2f}'
-            print(f'\r{prog_string}', end='', flush=True)
+            print(f'\r{prog_string}',
+                  end='',
+                  flush=True,
+                  )
 
         if self.step_count % 50 == 0:
-            plt.imsave(
-                self.s_path / Path(f'curframe_{self.instance_id}.jpeg'),
-                self.render(reduce_res=False))
+            plt.imsave(self.s_path / Path(f'curframe_{self.instance_id}.jpeg'),
+                       self.render(reduce_res=False),
+                       )
 
         if self.print_rewards and done:
             print('', flush=True)
             if self.save_final_state:
                 fs_path = self.s_path / Path('final_states')
                 fs_path.mkdir(exist_ok=True)
-                plt.imsave(
-                    fs_path / Path(f'frame_r{self.total_reward:.4f}_{self.reset_count}_small.jpeg'),
-                    obs_memory)
-                plt.imsave(
-                    fs_path / Path(f'frame_r{self.total_reward:.4f}_{self.reset_count}_full.jpeg'),
-                    self.render(reduce_res=False))
+                plt.imsave(fs_path / Path(f'frame_r{self.total_reward:.4f}_{self.reset_count}_small.jpeg'),
+                           obs_memory,
+                           )
+                plt.imsave(fs_path / Path(f'frame_r{self.total_reward:.4f}_{self.reset_count}_full.jpeg'),
+                           self.render(reduce_res=False),
+                           )
 
         if self.save_video and done:
             self.full_frame_writer.close()
@@ -439,8 +494,10 @@ class RedGymEnv(Env):
             self.all_runs.append(self.progress_reward)
             with open(self.s_path / Path(f'all_runs_{self.instance_id}.json'), 'w') as f:
                 json.dump(self.all_runs, f)
-            pd.DataFrame(self.agent_stats).to_csv(
-                self.s_path / Path(f'agent_stats_{self.instance_id}.csv.gz'), compression='gzip', mode='a')
+            pd.DataFrame(self.agent_stats).to_csv(self.s_path / Path(f'agent_stats_{self.instance_id}.csv.gz'),
+                                                  compression='gzip',
+                                                  mode='a',
+                                                  )
 
     def read_m(self,
                addr,
@@ -455,7 +512,13 @@ class RedGymEnv(Env):
         return bin(256 + self.read_m(addr))[-bit-1] == '1'
 
     def get_levels_sum(self):
-        poke_levels = [max(self.read_m(a) - 2, 0) for a in [0xD18C, 0xD1B8, 0xD1E4, 0xD210, 0xD23C, 0xD268]]
+        poke_levels = [max(self.read_m(a) - 2, 0) for a in [0xD18C,
+                                                            0xD1B8,
+                                                            0xD1E4,
+                                                            0xD210,
+                                                            0xD23C,
+                                                            0xD268,
+                                                            ]]
         return max(sum(poke_levels) - 4, 0) # subtract starting pokemon level
 
     def get_levels_reward(self):
@@ -466,7 +529,9 @@ class RedGymEnv(Env):
             scaled = level_sum
         else:
             scaled = (level_sum-explore_thresh) / scale_factor + explore_thresh
-        self.max_level_rew = max(self.max_level_rew, scaled)
+        self.max_level_rew = max(self.max_level_rew,
+                                 scaled,
+                                 )
         return self.max_level_rew
 
     def get_knn_reward(self):
@@ -482,7 +547,13 @@ class RedGymEnv(Env):
         return self.bit_count(self.read_m(0xD356))
 
     def read_party(self):
-        return [self.read_m(addr) for addr in [0xD164, 0xD165, 0xD166, 0xD167, 0xD168, 0xD169]]
+        return [self.read_m(addr) for addr in [0xD164,
+                                               0xD165,
+                                               0xD166,
+                                               0xD167,
+                                               0xD168,
+                                               0xD169,
+                                               ]]
 
     def update_heal_reward(self):
         cur_health = self.read_hp_fraction()
@@ -543,18 +614,17 @@ class RedGymEnv(Env):
             print(f'oak_parcel: {oak_parcel} oak_pokedex: {oak_pokedex} all_events_score: {all_events_score}')
         '''
 
-        state_scores = {
-            'event': self.reward_scale*self.update_max_event_rew(),
-            #'party_xp': self.reward_scale*0.1*sum(poke_xps),
-            'level': self.reward_scale*self.get_levels_reward(),
-            'heal': self.reward_scale*self.total_healing_rew,
-            'op_lvl': self.reward_scale*self.update_max_op_level(),
-            'dead': self.reward_scale*-0.1*self.died_count,
-            'badge': self.reward_scale*self.get_badges() * 5,
-            #'op_poke': self.reward_scale*self.max_opponent_poke * 800,
-            #'money': self.reward_scale* money * 3,
-            #'seen_poke': self.reward_scale * seen_poke_count * 400,
-            'explore': self.reward_scale * self.get_knn_reward()
+        state_scores = {'event': self.reward_scale*self.update_max_event_rew(),
+                        #'party_xp': self.reward_scale*0.1*sum(poke_xps),
+                        'level': self.reward_scale*self.get_levels_reward(),
+                        'heal': self.reward_scale*self.total_healing_rew,
+                        'op_lvl': self.reward_scale*self.update_max_op_level(),
+                        'dead': self.reward_scale*-0.1*self.died_count,
+                        'badge': self.reward_scale*self.get_badges() * 5,
+                        #'op_poke': self.reward_scale*self.max_opponent_poke * 800,
+                        #'money': self.reward_scale* money * 3,
+                        #'seen_poke': self.reward_scale * seen_poke_count * 400,
+                        'explore': self.reward_scale * self.get_knn_reward(),
         }
 
         return state_scores
@@ -564,26 +634,48 @@ class RedGymEnv(Env):
                         ):
         ss_dir = self.s_path / Path('screenshots')
         ss_dir.mkdir(exist_ok=True)
-        plt.imsave(
-            ss_dir / Path(f'frame{self.instance_id}_r{self.total_reward:.4f}_{self.reset_count}_{name}.jpeg'),
-            self.render(reduce_res=False))
+        plt.imsave(ss_dir / Path(f'frame{self.instance_id}_r{self.total_reward:.4f}_{self.reset_count}_{name}.jpeg'),
+                   self.render(reduce_res=False),
+                   )
 
     def update_max_op_level(self):
         #opponent_level = self.read_m(0xCFE8) - 5 # base level
-        opponent_level = max([self.read_m(a) for a in [0xD8C5, 0xD8F1, 0xD91D, 0xD949, 0xD975, 0xD9A1]]) - 5
+        opponent_level = max([self.read_m(a) for a in [0xD8C5,
+                                                       0xD8F1,
+                                                       0xD91D,
+                                                       0xD949,
+                                                       0xD975,
+                                                       0xD9A1,
+                                                       ]]) - 5
         #if opponent_level >= 7:
         #    self.save_screenshot('highlevelop')
-        self.max_opponent_level = max(self.max_opponent_level, opponent_level)
+        self.max_opponent_level = max(self.max_opponent_level,
+                                      opponent_level,
+                                      )
         return self.max_opponent_level * 0.2
 
     def update_max_event_rew(self):
         cur_rew = self.get_all_events_reward()
-        self.max_event_rew = max(cur_rew, self.max_event_rew)
+        self.max_event_rew = max(cur_rew,
+                                 self.max_event_rew,
+                                 )
         return self.max_event_rew
 
     def read_hp_fraction(self):
-        hp_sum = sum([self.read_hp(add) for add in [0xD16C, 0xD198, 0xD1C4, 0xD1F0, 0xD21C, 0xD248]])
-        max_hp_sum = sum([self.read_hp(add) for add in [0xD18D, 0xD1B9, 0xD1E5, 0xD211, 0xD23D, 0xD269]])
+        hp_sum = sum([self.read_hp(add) for add in [0xD16C,
+                                                    0xD198,
+                                                    0xD1C4,
+                                                    0xD1F0,
+                                                    0xD21C,
+                                                    0xD248,
+                                                    ]])
+        max_hp_sum = sum([self.read_hp(add) for add in [0xD18D,
+                                                        0xD1B9,
+                                                        0xD1E5,
+                                                        0xD211,
+                                                        0xD23D,
+                                                        0xD269,
+                                                        ]])
         max_hp_sum = max(max_hp_sum, 1)
         return hp_sum / max_hp_sum
 

@@ -31,7 +31,10 @@ def get_sprite_by_coords(img,
     sx = 9 +17*x
     alpha_v = np.array([255, 127,  39, 255], dtype=np.uint8)
     sprite = img[sy:sy+16, sx:sx+16]
-    return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1), np.array([[[0,0,0,0]]]), sprite).astype(np.uint8)
+    return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1),
+                    np.array([[[0,0,0,0]]]),
+                    sprite,
+                    ).astype(np.uint8)
 
 def game_coord_to_pixel_coord(x,
                               y,
@@ -88,7 +91,8 @@ def add_sprite(overlay_map,
                sprite,
                coord,
                ):
-    raw_base = (overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :])
+    raw_base = (overlay_map[coord[1]:coord[1]+16,
+                            coord[0]:coord[0]+16, :])
     intermediate = raw_base
     mask = sprite[:, :, 3] != 0
     if (mask.shape != intermediate[:,:,0].shape):
@@ -99,12 +103,16 @@ def add_sprite(overlay_map,
         return {'coords': coord}
     else:
         intermediate[mask] = sprite[mask]
-    overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :] = intermediate
+    overlay_map[coord[1]:coord[1]+16,
+                coord[0]:coord[0]+16, :] = intermediate
 
 def blend_overlay(background,
                   over,
                   ):
-    al = over[...,3].reshape(over.shape[0], over.shape[1], 1)
+    al = over[...,3].reshape(over.shape[0],
+                             over.shape[1],
+                             1,
+                             )
     ba = (255-al)/255
     oa = al/255
     return (background[..., :3]*ba + over[..., :3]*oa).astype(np.uint8)
@@ -123,19 +131,25 @@ def render_video(fname,
     errors = []
     sprites_rendered = 0
     turbo_map = get_cmap("cet_isoluminant_cgo_80_c38")._resample(8) #mpl.colormaps['turbo']._resample(8)
-    with media.VideoWriter(
-        f'{fname}.mov', split(bg).shape[:2], codec='prores_ks',
-        encoded_format='yuva444p', input_format='rgba', fps=60
-    ) as wr:
+    with media.VideoWriter(f'{fname}.mov',
+                           split(bg).shape[:2],
+                           codec='prores_ks',
+                           encoded_format='yuva444p',
+                           input_format='rgba',
+                           fps=60,
+                           ) as wr:
         step_count = len(all_coords)
         state = [{'dir': 0, 'map': 40} for _ in all_coords[0]]
-        pbar = tqdm(range(0, step_count))
+        pbar = tqdm(range(0,
+                          step_count))
         for idx in pbar:
             step = all_coords[idx]
             if idx > 0:
                 prev_step = all_coords[idx-1]
             elif add_start:
-                prev_step = np.tile(np.array([5, 3, 40]), (all_coords.shape[1], 1))
+                prev_step = np.tile(np.array([5, 3, 40]),
+                                    (all_coords.shape[1], 1),
+                                    )
             else:
                 prev_step = all_coords[idx]
             if debug:
@@ -167,11 +181,15 @@ def render_video(fname,
                         elif dy < 0:
                             state[run]['dir'] = 0
 
-                    p_coord = game_coord_to_pixel_coord(
-                        cx, -cy, state[run]['map'], over.shape[0]
+                    p_coord = game_coord_to_pixel_coord(cx,
+                                                        -cy,
+                                                        state[run]['map'],
+                                                        over.shape[0],
                     )
-                    prev_p_coord = game_coord_to_pixel_coord(
-                        px, -py, prev[2], over.shape[0]
+                    prev_p_coord = game_coord_to_pixel_coord(px,
+                                                             -py,
+                                                             prev[2],
+                                                             over.shape[0],
                     )
                     diff = p_coord - prev_p_coord
                     interp_coord = prev_p_coord + (fract*(diff.astype(np.float32))).astype(np.int32)
@@ -197,11 +215,11 @@ def test_render(name,
                 bg,
                 ):
     print(f'processing chunk with shape {dat.shape}')
-    return render_video(
-        name,
-        dat,
-        walks,
-        bg, inter_steps=8
+    return render_video(name,
+                        dat,
+                        walks,
+                        bg,
+                        inter_steps=8,
     )
 
 if __name__ == '__main__':
@@ -218,12 +236,16 @@ if __name__ == '__main__':
         print(f'{coords_save_pth} not found, building...')
         dfs = []
         for run in tqdm(run_dir.glob('*.gz')):
-            tdf = pd.read_csv(run, compression='gzip')
+            tdf = pd.read_csv(run,
+                              compression='gzip',
+                              )
             dfs.append(tdf[tdf['map'] != 'map'])
 
         base_coords = make_all_coords_arrays(dfs)
         print(f'saving {coords_save_pth}')
-        np.savez_compressed(coords_save_pth, base_coords)
+        np.savez_compressed(coords_save_pth,
+                            base_coords,
+                            )
 
     print(f'initial data shape: {base_coords.shape}')
 
@@ -237,7 +259,10 @@ if __name__ == '__main__':
     procs = 8#16
     with Pool(procs) as p:
         run_steps = 16385
-        base_data = rearrange(base_coords, '(v s) r c -> s (v r) c', v=base_coords.shape[0]//run_steps)
+        base_data = rearrange(base_coords,
+                              '(v s) r c -> s (v r) c',
+                              v=base_coords.shape[0]//run_steps,
+                              )
         base_data = base_data[:1024]
         print(f'base_data shape: {base_data.shape}')
         runs = base_data.shape[0] #base_data.shape[1]
@@ -247,5 +272,9 @@ if __name__ == '__main__':
         #f'map_vis_initial_state', base_data[:], walks, start_bg
         all_render_errors = p.starmap(
             test_render,
-            [(f'map_vis_color/map_vis_initial_state{i}', base_data[chunk_size*i:chunk_size*(i+1)+5], walks, start_bg) for i in range(procs)])
+            [(f'map_vis_color/map_vis_initial_state{i}',
+              base_data[chunk_size*i:chunk_size*(i+1)+5],
+              walks,
+              start_bg,
+              ) for i in range(procs)])
 

@@ -27,7 +27,10 @@ def get_sprite_by_coords(img,
     sx = 9 +17*x
     alpha_v = np.array([255, 127,  39, 255], dtype=np.uint8)
     sprite = img[sy:sy+16, sx:sx+16]
-    return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1), np.array([[[0,0,0,0]]]), sprite).astype(np.uint8)
+    return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1),
+                    np.array([[[0,0,0,0]]]),
+                    sprite,
+                    ).astype(np.uint8)
 
 def game_coord_to_pixel_coord(x,
                               y,
@@ -95,12 +98,16 @@ def add_sprite(overlay_map,
         return {'coords': coord}
     else:
         intermediate[mask] = sprite[mask]
-    overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :] = intermediate
+    overlay_map[coord[1]:coord[1]+16,
+                coord[0]:coord[0]+16, :] = intermediate
 
 def blend_overlay(background,
                   over,
                   ):
-    al = over[...,3].reshape(over.shape[0], over.shape[1], 1)
+    al = over[...,3].reshape(over.shape[0],
+                             over.shape[1],
+                             1,
+                             )
     ba = (255-al)/255
     oa = al/255
     return (background[..., :3]*ba + over[..., :3]*oa).astype(np.uint8)
@@ -118,10 +125,13 @@ def render_video(fname,
     debug = False
     errors = []
     sprites_rendered = 0
-    with media.VideoWriter(
-        f'{fname}.mov', split(bg).shape[:2], codec='prores_ks',
-        encoded_format='yuva444p', input_format='rgba', fps=60
-    ) as wr:
+    with media.VideoWriter(f'{fname}.mov',
+                           split(bg).shape[:2],
+                           codec='prores_ks',
+                           encoded_format='yuva444p',
+                           input_format='rgba',
+                           fps=60,
+                           ) as wr:
         step_count = len(all_coords)
         state = [{'dir': 0, 'map': 40} for _ in all_coords[0]]
         pbar = tqdm(range(0, step_count))
@@ -130,13 +140,16 @@ def render_video(fname,
             if idx > 0:
                 prev_step = all_coords[idx-1]
             elif add_start:
-                prev_step = np.tile(np.array([5, 3, 40]), (all_coords.shape[1], 1))
+                prev_step = np.tile(np.array([5, 3, 40]),
+                                    (all_coords.shape[1], 1),
+                                    )
             else:
                 prev_step = all_coords[idx]
             if debug:
                 print('-- step --')
             for fract in np.arange(0,1,1/inter_steps):
-                over = np.zeros_like(bg, dtype=np.uint8)
+                over = np.zeros_like(bg,
+                                     dtype=np.uint8)
                 for run in range(len(step)):
                     cur = step[run]
                     prev = prev_step[run]
@@ -162,19 +175,23 @@ def render_video(fname,
                         elif dy < 0:
                             state[run]['dir'] = 0
 
-                    p_coord = game_coord_to_pixel_coord(
-                        cx, -cy, state[run]['map'], over.shape[0]
+                    p_coord = game_coord_to_pixel_coord(cx,
+                                                        -cy,
+                                                        state[run]['map'],
+                                                        over.shape[0],
                     )
-                    prev_p_coord = game_coord_to_pixel_coord(
-                        px, -py, prev[2], over.shape[0]
+                    prev_p_coord = game_coord_to_pixel_coord(px,
+                                                             -py,
+                                                             prev[2],
+                                                             over.shape[0],
                     )
                     diff = p_coord - prev_p_coord
                     interp_coord = prev_p_coord + (fract*(diff.astype(np.float32))).astype(np.int32)
                     if np.linalg.norm(diff) > 16:
                         continue
-                    error = add_sprite(
-                        over, walks[state[run]['dir']],
-                        interp_coord
+                    error = add_sprite(over,
+                                       walks[state[run]['dir']],
+                                       interp_coord,
                     )
                     if error is not None:
                         errors.append(error)
@@ -191,11 +208,10 @@ def test_render(name,
                 bg,
                 ):
     print(f'processing chunk with shape {dat.shape}')
-    return render_video(
-        name,
-        dat,
-        walks,
-        bg, inter_steps=8
+    return render_video(name,
+                        dat,
+                        walks,
+                        bg, inter_steps=8
     )
 
 if __name__ == '__main__':
@@ -212,18 +228,22 @@ if __name__ == '__main__':
         print(f'{coords_save_pth} not found, building...')
         dfs = []
         for run in tqdm(run_dir.glob('*.gz')):
-            tdf = pd.read_csv(run, compression='gzip')
+            tdf = pd.read_csv(run,
+                              compression='gzip')
             dfs.append(tdf[tdf['map'] != 'map'])
 
         base_coords = make_all_coords_arrays(dfs)
         print(f'saving {coords_save_pth}')
-        np.savez_compressed(coords_save_pth, base_coords)
+        np.savez_compressed(coords_save_pth,
+                            base_coords)
 
     print(f'initial data shape: {base_coords.shape}')
 
     main_map = np.array(Image.open('poke_map/pokemap_full_calibrated_CROPPED_1.png'))
     chars_img = np.array(Image.open('poke_map/characters.png'))
-    alpha_val = get_sprite_by_coords(chars_img, 1, 0)[0,0]
+    alpha_val = get_sprite_by_coords(chars_img,
+                                     1,
+                                     0)[0,0]
     walks = [get_sprite_by_coords(chars_img, x, 0) for x in [1, 4, 6, 8]]
 
     start_bg = main_map.copy()
@@ -231,12 +251,17 @@ if __name__ == '__main__':
     procs = 16
     with Pool(procs) as p:
         run_steps = 16385
-        base_data = rearrange(base_coords, '(v s) r c -> s (v r) c', v=base_coords.shape[0]//run_steps)
+        base_data = rearrange(base_coords,
+                              '(v s) r c -> s (v r) c',
+                              v=base_coords.shape[0]//run_steps,
+                              )
         print(f'base_data shape: {base_data.shape}')
         runs = base_data.shape[0] #base_data.shape[1]
         chunk_size = runs // procs
         all_render_errors = p.starmap(
             test_render,
             #[(f'test_run_p{i}', base_data[:, chunk_size*i:chunk_size*(i+1)], walks, start_bg) for i in range(procs)])
-            [(f'vids_run1/test_run_p{i}', base_data[chunk_size*i:chunk_size*(i+1)+5], walks, start_bg) for i in range(procs)])
+            [(f'vids_run1/test_run_p{i}', base_data[chunk_size*i:chunk_size*(i+1)+5],
+                                                    walks,
+                                                    start_bg) for i in range(procs)])
 

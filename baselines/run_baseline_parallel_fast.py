@@ -34,24 +34,38 @@ if __name__ == '__main__':
     sess_id = str(uuid.uuid4())[:8]
     sess_path = Path(f'session_{sess_id}')
 
-    env_config = {
-                'headless': True, 'save_final_state': True, 'early_stop': False,
-                'action_freq': 24, 'init_state': '../has_pokedex_nballs.state', 'max_steps': ep_length, 
-                'print_rewards': True, 'save_video': False, 'fast_video': True, 'session_path': sess_path,
-                'gb_path': '../PokemonRed.gb', 'debug': False, 'sim_frame_dist': 2_000_000.0, 
-                'use_screen_explore': True, 'reward_scale': 4, 'extra_buttons': False,
-                'explore_weight': 3 # 2.5
+    env_config = {'headless': True,
+                  'save_final_state': True,
+                  'early_stop': False,
+                  'action_freq': 24,
+                  'init_state': '../has_pokedex_nballs.state',
+                  'max_steps': ep_length,
+                  'print_rewards': True,
+                  'save_video': False,
+                  'fast_video': True,
+                  'session_path': sess_path,
+                  'gb_path': '../PokemonRed.gb',
+                  'debug': False,
+                  'sim_frame_dist': 2_000_000.0,
+                  'use_screen_explore': True,
+                  'reward_scale': 4,
+                  'extra_buttons': False,
+                  'explore_weight': 3 # 2.5
             }
 
     print(env_config)
 
-    num_cpu = 16  # Also sets the number of episodes per training iteration
-    env = SubprocVecEnv([make_env(i, env_config) for i in range(num_cpu)])
-    
-    checkpoint_callback = CheckpointCallback(save_freq=ep_length, save_path=sess_path,
-                                     name_prefix='poke')
-    
-    callbacks = [checkpoint_callback, TensorboardCallback()]
+    env = SubprocVecEnv([make_env(rank=i,
+                                  env_conf=env_config,
+                                  ) for i in range(num_cpu)])
+
+    checkpoint_callback = CheckpointCallback(save_freq=ep_length,
+                                             save_path=sess_path,
+                                             name_prefix='poke',
+                                             )
+    callbacks = [checkpoint_callback,
+                 TensorboardCallback(),
+                 ]
 
     if use_wandb_logging:
         import wandb
@@ -80,10 +94,20 @@ if __name__ == '__main__':
         model.rollout_buffer.n_envs = num_cpu
         model.rollout_buffer.reset()
     else:
-        model = PPO('CnnPolicy', env, verbose=1, n_steps=ep_length // 8, batch_size=128, n_epochs=3, gamma=0.998, tensorboard_log=sess_path)
-    
+        model = PPO('CnnPolicy',
+                    env,
+                    verbose=1,
+                    n_steps=ep_length // 8,
+                    batch_size=128,
+                    n_epochs=3,
+                    gamma=0.998,
+                    tensorboard_log=sess_path,
+                    )
+
     for i in range(learn_steps):
-        model.learn(total_timesteps=(ep_length)*num_cpu*1000, callback=CallbackList(callbacks))
+        model.learn(total_timesteps=(ep_length)*num_cpu*1000,
+                    callback=CallbackList(callbacks),
+                    )
 
     if use_wandb_logging:
         run.finish()

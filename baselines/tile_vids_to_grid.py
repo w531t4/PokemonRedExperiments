@@ -69,16 +69,26 @@ def make_script(path):
     print(f"generating grid script for {sess_dir.name}")
     rollout_dir = sess_dir / "rollouts"
     all_files = list(rollout_dir.glob("full_reset_1*.mp4"))
-    return run_ffmpeg_grid(
-        (sess_dir / sess_dir.name).with_suffix('.mp4'), all_files,
-        "160x144", "1280x720", 8, 5, short_test=False)
+    return run_ffmpeg_grid((sess_dir / sess_dir.name).with_suffix('.mp4'),
+                           all_files,
+                           "160x144",
+                           "1280x720",
+                           8,
+                           5,
+                           short_test=False,
+                           )
 
 def make_outer_script(out_file,
                       paths,
                       ):
-    return run_ffmpeg_grid(
-        out_file, paths,
-        "1280x720", "10240x5760", 8, 8, short_test=False)
+    return run_ffmpeg_grid(out_file,
+                           paths,
+                           "1280x720",
+                           "10240x5760",
+                           8,
+                           8,
+                           short_test=False,
+                           )
 
 def write_file(out_file,
                script,
@@ -94,13 +104,21 @@ if __name__ == "__main__":
         outer_dir = Path(sys.argv[1])
         all_sessions = list(outer_dir.glob("session_*"))
         scripts = [make_script(sess) for sess in all_sessions]
-        for script, sess in zip(scripts, all_sessions):
+        for script, sess in zip(scripts,
+                                all_sessions,
+                                ):
             out_file = Path(outer_dir / Path("parallel_scripts") / sess.with_suffix('.sh').name)
-            write_file(out_file, script)
+            write_file(out_file,
+                       script,
+                       )
     else:
         base = Path('grid_renders')
         all_input_vids = list(base.glob("session_*/session_*.mp4"))
         print(len(all_input_vids))
         output_dir = base / "outer_mosaic"
-        script = make_outer_script(output_dir / "big_boi.mp4", all_input_vids)
-        write_file(output_dir / "big_boi.sh", script)
+        script = make_outer_script(output_dir / "big_boi.mp4",
+                                   all_input_vids,
+                                   )
+        write_file(output_dir / "big_boi.sh",
+                   script,
+                   )
