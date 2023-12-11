@@ -5,14 +5,14 @@ import os
 from math import floor, sqrt
 import json
 from pathlib import Path
-
+import hnswlib
 import numpy as np
+
 from einops import rearrange
 import matplotlib.pyplot as plt
 from skimage.transform import resize
 from pyboy import PyBoy
 from pyboy.logger import log_level
-import hnswlib
 import mediapy as media
 import pandas as pd
 
