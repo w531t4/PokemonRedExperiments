@@ -3,7 +3,10 @@ import pandas as pd
 import numpy as np
 from red_gym_env import RedGymEnv
 
-def run_recorded_actions_on_emulator_and_save_video(sess_id, instance_id, run_index):
+def run_recorded_actions_on_emulator_and_save_video(sess_id,
+                                                    instance_id,
+                                                    run_index,
+                                                    ):
     sess_path = Path(f'session_{sess_id}')
     tdf = pd.read_csv(f"session_{sess_id}/agent_stats_{instance_id}.csv.gz", compression='gzip')
     tdf = tdf[tdf['map'] != 'map'] # remove unused

@@ -9,7 +9,10 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from tensorboard_callback import TensorboardCallback
 
-def make_env(rank, env_conf, seed=0):
+def make_env(rank,
+             env_conf,
+             seed=0,
+             ):
     """
     Utility function for multiprocessed env.
     :param env_id: (str) the environment ID

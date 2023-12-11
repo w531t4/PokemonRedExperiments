@@ -17,15 +17,20 @@ import numpy as np
 def make_all_coords_arrays(filtered_dfs):
     return np.array([tdf[['x', 'y', 'map']].to_numpy().astype(np.uint8) for tdf in filtered_dfs]).transpose(1,0,2)
 
-def get_sprite_by_coords(img, x, y):
+def get_sprite_by_coords(img,
+                         x,
+                         y,
+                         ):
     sy = 34+17*y
     sx = 9 +17*x
     alpha_v = np.array([255, 127,  39, 255], dtype=np.uint8)
     sprite = img[sy:sy+16, sx:sx+16]
     return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1), np.array([[[0,0,0,0]]]), sprite).astype(np.uint8)
 
-def game_coord_to_global_coord(
-    x, y, map_idx):
+def game_coord_to_global_coord(x,
+                               y,
+                               map_idx,
+                               ):
 
     global_offset = np.array([1056-16*12, 331]) #np.array([790, -29])
     map_offsets = {
@@ -72,7 +77,10 @@ def game_coord_to_global_coord(
     #coord[1] = base_y - coord[1]
     return coord
 
-def add_sprite(overlay_map, sprite, coord):
+def add_sprite(overlay_map,
+               sprite,
+               coord,
+               ):
     raw_base = (overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :])
     intermediate = raw_base
     mask = sprite[:, :, 3] != 0
@@ -86,7 +94,9 @@ def add_sprite(overlay_map, sprite, coord):
         intermediate[mask] = sprite[mask]
     overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :] = intermediate
 
-def blend_overlay(background, over):
+def blend_overlay(background,
+                  over,
+                  ):
     al = over[...,3].reshape(over.shape[0], over.shape[1], 1)
     ba = (255-al)/255
     oa = al/255
@@ -95,7 +105,10 @@ def blend_overlay(background, over):
 def split(img):
     return img
 
-def compute_flow(all_coords, inter_steps=1, add_start=True):
+def compute_flow(all_coords,
+                 inter_steps=1,
+                 add_start=True,
+                 ):
     debug = False
     errors = []
     sprites_rendered = 0
@@ -168,7 +181,10 @@ def compute_flow(all_coords, inter_steps=1, add_start=True):
 
     return all_flows
 
-def render_arrows(fname, all_flows, arrow_sprite):
+def render_arrows(fname,
+                  all_flows,
+                  arrow_sprite,
+                  ):
     print("Rendering arrows")
     min_x = min([k[0] for k in all_flows.keys()])
     max_x = max([k[0] for k in all_flows.keys()])

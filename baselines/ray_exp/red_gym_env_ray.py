@@ -26,8 +26,9 @@ from pyboy.utils import WindowEvent
 class RedGymEnv(gym.Env):
 
 
-    def __init__(
-        self, config=None):
+    def __init__(self,
+                 config=None,
+                 ):
 
         self.debug = config['debug']
         self.s_path = config['session_path']
@@ -108,7 +109,11 @@ class RedGymEnv(gym.Env):
         self.pyboy.set_emulation_speed(0 if config['headless'] else 6)
         self.reset()
 
-    def reset(self, *, seed=None, options=None):
+    def reset(self,
+              *,
+              seed=None,
+              options=None,
+              ):
         # restart game, skipping credits
         with open(self.init_state, "rb") as f:
             self.pyboy.load_state(f)
@@ -155,7 +160,11 @@ class RedGymEnv(gym.Env):
         self.knn_index.init_index(
             max_elements=self.num_elements, ef_construction=100, M=16)
 
-    def render(self, reduce_res=True, add_memory=True, update_mem=True):
+    def render(self,
+               reduce_res=True,
+               add_memory=True,
+               update_mem=True,
+               ):
         game_pixels_render = self.screen.screen_ndarray() # (144, 160, 3)
         if reduce_res:
             game_pixels_render = (255*resize(game_pixels_render, self.output_shape)).astype(np.uint8)
@@ -176,7 +185,9 @@ class RedGymEnv(gym.Env):
                     axis=0)
         return game_pixels_render
 
-    def step(self, action):
+    def step(self,
+             action,
+             ):
 
         self.run_action_on_emulator(action)
         self.append_agent_stats()
@@ -212,7 +223,9 @@ class RedGymEnv(gym.Env):
 
         return obs_memory, new_reward*0.1, done, done, {}
 
-    def run_action_on_emulator(self, action):
+    def run_action_on_emulator(self,
+                               action,
+                               ):
         # press button then release after some steps
         self.pyboy.send_input(self.valid_actions[action])
         for i in range(self.act_freq):
@@ -250,7 +263,9 @@ class RedGymEnv(gym.Env):
             'event': self.progress_reward['event'], 'healr': self.total_healing_rew
         })
 
-    def update_frame_knn_index(self, frame_vec):
+    def update_frame_knn_index(self,
+                               frame_vec,
+                               ):
 
         if self.get_levels_sum() >= 22 and not self.levels_satisfied:
             self.levels_satisfied = True
@@ -340,7 +355,10 @@ class RedGymEnv(gym.Env):
         #done = self.read_hp_fraction() == 0
         return done
 
-    def save_and_print_info(self, done, obs_memory):
+    def save_and_print_info(self,
+                            done,
+                            obs_memory,
+                            ):
         if self.print_rewards:
             prog_string = f'step: {self.step_count:6d}'
             for key, val in self.progress_reward.items():
@@ -376,7 +394,9 @@ class RedGymEnv(gym.Env):
             pd.DataFrame(self.agent_stats).to_csv(
                 self.s_path / Path(f'agent_stats_{self.instance_id}.csv.gz'), compression='gzip', mode='a')
 
-    def read_m(self, addr):
+    def read_m(self,
+               addr,
+               ):
         return self.pyboy.get_memory_value(addr)
 
     def read_bit(self, addr, bit: int) -> bool:
@@ -427,7 +447,9 @@ class RedGymEnv(gym.Env):
     def get_all_events_reward(self):
         return max(sum([self.bit_count(self.read_m(i)) for i in range(0xD747, 0xD886)]) - 13, 0)
 
-    def get_game_state_reward(self, print_stats=False):
+    def get_game_state_reward(self,
+                              print_stats=False,
+                              ):
         # addresses from https://datacrystal.romhacking.net/wiki/Pok%C3%A9mon_Red/Blue:RAM_map
         # https://github.com/pret/pokered/blob/91dc3c9f9c8fd529bb6e8307b58b96efa0bec67e/constants/event_constants.asm
         '''
@@ -468,7 +490,9 @@ class RedGymEnv(gym.Env):
 
         return state_scores
 
-    def save_screenshot(self, name):
+    def save_screenshot(self,
+                        name,
+                        ):
         ss_dir = self.s_path / Path('screenshots')
         ss_dir.mkdir(exist_ok=True)
         plt.imsave(
@@ -493,17 +517,25 @@ class RedGymEnv(gym.Env):
         max_hp_sum = sum([self.read_hp(add) for add in [0xD18D, 0xD1B9, 0xD1E5, 0xD211, 0xD23D, 0xD269]])
         return hp_sum / max_hp_sum
 
-    def read_hp(self, start):
+    def read_hp(self,
+                start,
+                ):
         return 256 * self.read_m(start) + self.read_m(start+1)
 
     # built-in since python 3.10
-    def bit_count(self, bits):
+    def bit_count(self,
+                  bits,
+                  ):
         return bin(bits).count('1')
 
-    def read_triple(self, start_add):
+    def read_triple(self,
+                    start_add,
+                    ):
         return 256*256*self.read_m(start_add) + 256*self.read_m(start_add+1) + self.read_m(start_add+2)
 
-    def read_bcd(self, num):
+    def read_bcd(self,
+                 num,
+                 ):
         return 10 * ((num >> 4) & 0x0f) + (num & 0x0f)
 
     def read_money(self):

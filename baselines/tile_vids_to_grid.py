@@ -6,7 +6,14 @@ from pathlib import Path
 # inspired by https://www.jimby.name/techbits/recent/xstack/
 # and https://trac.ffmpeg.org/wiki/Create%20a%20mosaic%20out%20of%20several%20input%20videos%20using%20xstack
 
-def run_ffmpeg_grid(out_path, files, screen_res_str, full_res_string, gx, gy, short_test=False):
+def run_ffmpeg_grid(out_path,
+                    files,
+                    screen_res_str,
+                    full_res_string,
+                    gx,
+                    gy,
+                    short_test=False,
+                    ):
     cmd = ['ffmpeg']
     for file in files:
         cmd.append("-i")
@@ -66,12 +73,16 @@ def make_script(path):
         (sess_dir / sess_dir.name).with_suffix('.mp4'), all_files,
         "160x144", "1280x720", 8, 5, short_test=False)
 
-def make_outer_script(out_file, paths):
+def make_outer_script(out_file,
+                      paths,
+                      ):
     return run_ffmpeg_grid(
         out_file, paths,
         "1280x720", "10240x5760", 8, 8, short_test=False)
 
-def write_file(out_file, script):
+def write_file(out_file,
+               script,
+               ):
     with open(out_file, "w") as f:
         print(f"writing to {f}")
         print(script, file=f)

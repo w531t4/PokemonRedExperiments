@@ -23,15 +23,21 @@ def load_tex(name):
     resp = requests.get(sprites[name])
     return np.array(Image.open(io.BytesIO(resp.content)))
 
-def get_sprite_by_coords(img, x, y):
+def get_sprite_by_coords(img,
+                         x,
+                         y,
+                         ):
     sy = 34+17*y
     sx = 9 +17*x
     alpha_v = np.array([255, 127,  39, 255], dtype=np.uint8)
     sprite = img[sy:sy+16, sx:sx+16]
     return np.where((sprite == alpha_v).all(axis=2).reshape(16,16,1), np.array([[[0,0,0,0]]]), sprite).astype(np.uint8)
 
-def game_coord_to_pixel_coord(
-    x, y, map_idx, base_y):
+def game_coord_to_pixel_coord(x,
+                              y,
+                              map_idx,
+                              base_y,
+                              ):
 
     global_offset = np.array([1056-16*12, 331]) #np.array([790, -29])
     map_offsets = {
@@ -78,7 +84,10 @@ def game_coord_to_pixel_coord(
     coord[1] = base_y - coord[1]
     return coord
 
-def add_sprite(overlay_map, sprite, coord):
+def add_sprite(overlay_map,
+               sprite,
+               coord,
+               ):
     raw_base = (overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :])
     intermediate = raw_base
     mask = sprite[:, :, 3] != 0
@@ -92,7 +101,9 @@ def add_sprite(overlay_map, sprite, coord):
         intermediate[mask] = sprite[mask]
     overlay_map[coord[1]:coord[1]+16, coord[0]:coord[0]+16, :] = intermediate
 
-def blend_overlay(background, over):
+def blend_overlay(background,
+                  over,
+                  ):
     al = over[...,3].reshape(over.shape[0], over.shape[1], 1)
     ba = (255-al)/255
     oa = al/255
@@ -101,7 +112,13 @@ def blend_overlay(background, over):
 def split(img):
     return img
 
-def render_video(fname, all_coords, walks, bg, inter_steps=4, add_start=True):
+def render_video(fname,
+                 all_coords,
+                 walks,
+                 bg,
+                 inter_steps=4,
+                 add_start=True,
+                 ):
     debug = False
     errors = []
     sprites_rendered = 0
@@ -174,7 +191,11 @@ def render_video(fname, all_coords, walks, bg, inter_steps=4, add_start=True):
                 pbar.set_description(f"draws: {sprites_rendered} errors: {len(errors)}, {perc:.2%}")
     return errors
 
-def test_render(name, dat, walks, bg):
+def test_render(name,
+                dat,
+                walks,
+                bg,
+                ):
     print(f'processing chunk with shape {dat.shape}')
     return render_video(
         name,

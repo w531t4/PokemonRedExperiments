@@ -21,7 +21,9 @@ def merge_dicts_by_mean(dicts):
 
 class TensorboardCallback(BaseCallback):
 
-    def __init__(self, verbose=0):
+    def __init__(self,
+                 verbose=0,
+                 ):
         super().__init__(verbose)
 
     def _on_step(self) -> bool:
