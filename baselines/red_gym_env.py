@@ -482,15 +482,21 @@ class RedGymEnv(Env):
                             done: bool,
                             obs_memory: np.ndarray,
                             ) -> None:
-        if self.print_rewards:
+        if self.print_rewards and (self.step_count % 100) == 0:
             prog_string = f'step: {self.step_count:6d}'
+            location = self.get_map_location(self.read_m(0xD35E))
             for key, val in self.progress_reward.items():
                 prog_string += f' {key}: {val:5.2f}'
             prog_string += f' sum: {self.total_reward:5.2f}'
+            prog_string += f' location: {location} '
             print(f'\r{prog_string}',
                   end='',
                   flush=True,
                   )
+            txt_status = self.s_path / Path('txt_status')
+            txt_status.mkdir(exist_ok=True)
+            txt_total = txt_status / str(self.instance_id)
+            txt_total.write_text("%s\n" % prog_string)
 
         if self.step_count % 50 == 0:
             plt.imsave(self.s_path / Path(f'curframe_{self.instance_id}.jpeg'),
