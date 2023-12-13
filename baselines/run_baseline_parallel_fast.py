@@ -9,6 +9,11 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from tensorboard_callback import TensorboardCallback
+from datetime import datetime
+import sys
+
+def get_stamp() -> str:
+    return datetime.utcnow().strftime('%Y%m%d_%H%M')
 
 def make_env(rank: int,
              env_conf: Dict[str, Union[bool, int, str, float]],
@@ -30,10 +35,16 @@ def make_env(rank: int,
 
 if __name__ == '__main__':
 
+    if len(sys.argv) == 2:
+        num_cpu = int(sys.argv[1])
+    else:
+        num_cpu = 40 # Also sets the number of episodes per training iteration
+
     use_wandb_logging = False
     ep_length = 2048 * 10
     sess_id = str(uuid.uuid4())[:8]
-    sess_path = Path(f'session_{sess_id}')
+    stamp = get_stamp()
+    sess_path = Path(f'sessions/session_{stamp}_{sess_id}')
 
     env_config: RGEnvConfig = {'headless': True,
                   'save_final_state': True,
@@ -56,7 +67,6 @@ if __name__ == '__main__':
 
     print(env_config)
 
-    num_cpu = 52  # Also sets the number of episodes per training iteration
     env = SubprocVecEnv([make_env(rank=i,
                                   env_conf=env_config,
                                   ) for i in range(num_cpu)])
@@ -87,9 +97,13 @@ if __name__ == '__main__':
     learn_steps = 40
     # put a checkpoint here you want to start from
     #file_name = 'session_e41c9eff/poke_38207488_steps'
-    file_name = 'session_bde95210/poke_8519680_steps'
+    step_files = Path().cwd().rglob("*/poke_*_steps.zip")
+    last_stepfile = sorted(step_files, key=lambda z: z.stat().st_mtime)[-1]
+    prefix = "%s/" % str(Path().cwd() / "baselines")
+    file_name = str(last_stepfile).replace("%s/" % str(last_stepfile), "").replace(".zip", "")
+
     if exists(file_name + '.zip'):
-        print('\nloading checkpoint')
+        print('\nloading checkpoint file=%s.zip' % file_name)
         model = PPO.load(file_name, env=env)
         model.n_steps = ep_length
         model.n_envs = num_cpu
