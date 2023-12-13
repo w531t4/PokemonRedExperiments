@@ -130,7 +130,8 @@ class RedGymEnv(Env):
 
         if not config['headless']:
             self.pyboy.set_emulation_speed(6)
-
+        else:
+            self.pyboy.set_emulation_speed(0)
         self.reset()
 
     def reset(self,
