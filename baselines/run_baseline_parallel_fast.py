@@ -10,6 +10,7 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from tensorboard_callback import TensorboardCallback
 from datetime import datetime
+from find_dir import get_current_dir
 import sys
 
 def get_stamp() -> str:
@@ -97,8 +98,9 @@ if __name__ == '__main__':
     learn_steps = 40
     # put a checkpoint here you want to start from
     #file_name = 'session_e41c9eff/poke_38207488_steps'
-    step_files = Path().cwd().rglob("*/poke_*_steps.zip")
-    last_stepfile = sorted(step_files, key=lambda z: z.stat().st_mtime)[-1]
+    current_dir = get_current_dir(basepath=Path(__file__).parent / "sessions")
+    step_files = list(current_dir.glob("poke_*_steps.zip"))
+    last_stepfile = sorted(step_files, key=lambda z: int(z.name.split("_")[1]))[-1]
     prefix = "%s/" % str(Path().cwd() / "baselines")
     file_name = str(last_stepfile).replace("%s/" % str(last_stepfile), "").replace(".zip", "")
 
