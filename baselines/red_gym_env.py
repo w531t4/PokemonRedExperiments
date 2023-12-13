@@ -488,6 +488,7 @@ class RedGymEnv(Env):
             for key, val in self.progress_reward.items():
                 prog_string += f' {key}: {val:5.2f}'
             prog_string += f' sum: {self.total_reward:5.2f}'
+            prog_string += f' i_id: {self.instance_id}'
             prog_string += f' location: {location} '
             print(f'\r{prog_string}',
                   end='',
