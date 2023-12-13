@@ -294,10 +294,10 @@ class RedGymEnv(Env):
                 if action < 4:
                     # release arrow
                     self.pyboy.send_input(self.release_arrow[action])
-                if action > 3 and action < 6:
+                elif action > 3 and action < 6:
                     # release button
                     self.pyboy.send_input(self.release_button[action - 4])
-                if self.valid_actions[action] == WindowEvent.PRESS_BUTTON_START:
+                elif self.valid_actions[action] == WindowEvent.PRESS_BUTTON_START:
                     self.pyboy.send_input(WindowEvent.RELEASE_BUTTON_START)
             if self.save_video and not self.fast_video:
                 self.add_video_frame()
