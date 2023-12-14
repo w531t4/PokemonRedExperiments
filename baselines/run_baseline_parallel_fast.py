@@ -110,12 +110,16 @@ if __name__ == '__main__':
         file_name = str(last_stepfile).replace("%s/" % str(last_stepfile), "").replace(".zip", "")
 
         print('\nloading checkpoint file=%s.zip' % file_name)
-        model = PPO.load(file_name, env=env)
-        model.n_steps = ep_length
-        model.n_envs = num_cpu
-        model.rollout_buffer.buffer_size = ep_length
-        model.rollout_buffer.n_envs = num_cpu
-        model.rollout_buffer.reset()
+        model = PPO.load(file_name,
+                         env=env,
+                         force_reset=True,
+                         )
+        # This code appears to break the values originally set the original policy...
+        #model.n_steps = ep_length // 8
+        #model.n_envs = num_cpu
+        #model.rollout_buffer.buffer_size = ep_length
+        #model.rollout_buffer.n_envs = num_cpu
+        #model.rollout_buffer.reset()
     else:
         model = PPO('CnnPolicy',
                     env,
