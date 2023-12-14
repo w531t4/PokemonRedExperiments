@@ -250,10 +250,15 @@ class RedGymEnv(Env):
         obs_flat: np.float32 = obs_memory[frame_start:frame_start+self.output_shape[0],
                               ...].flatten().astype(np.float32)
 
-        if self.use_screen_explore:
-            self.update_frame_knn_index(obs_flat)
-        else:
-            self.update_seen_coords()
+        # The screen transitions (prior to battle) seem to be encouraging
+        # it to go into battle more often. 0xd57 is non-zero when in battle
+        # (and during transitions).
+        battle_indicator = self.read_m(0xD057)
+        if battle_indicator == 0:
+            if self.use_screen_explore:
+                self.update_frame_knn_index(obs_flat)
+            else:
+                self.update_seen_coords()
 
         self.update_heal_reward()
         self.party_size = self.read_m(0xD163)
