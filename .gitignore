@@ -11,3 +11,4 @@ session_*
 .env
 PokemonRed.gb.state
 venv*
+pokemonred-env/*.egg-info
