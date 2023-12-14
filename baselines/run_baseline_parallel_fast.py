@@ -100,11 +100,11 @@ if __name__ == '__main__':
     #file_name = 'session_e41c9eff/poke_38207488_steps'
     current_dir = get_current_dir(basepath=Path(__file__).parent / "sessions")
     step_files = list(current_dir.glob("poke_*_steps.zip"))
-    last_stepfile = sorted(step_files, key=lambda z: int(z.name.split("_")[1]))[-1]
-    prefix = "%s/" % str(Path().cwd() / "baselines")
-    file_name = str(last_stepfile).replace("%s/" % str(last_stepfile), "").replace(".zip", "")
+    if len(step_files) > 0:
+        last_stepfile = sorted(step_files, key=lambda z: int(z.name.split("_")[1]))[-1]
+        prefix = "%s/" % str(Path().cwd() / "baselines")
+        file_name = str(last_stepfile).replace("%s/" % str(last_stepfile), "").replace(".zip", "")
 
-    if exists(file_name + '.zip'):
         print('\nloading checkpoint file=%s.zip' % file_name)
         model = PPO.load(file_name, env=env)
         model.n_steps = ep_length
