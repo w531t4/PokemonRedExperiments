@@ -98,8 +98,12 @@ if __name__ == '__main__':
     learn_steps = 40
     # put a checkpoint here you want to start from
     #file_name = 'session_e41c9eff/poke_38207488_steps'
-    current_dir = get_current_dir(basepath=Path(__file__).parent / "sessions")
-    step_files = list(current_dir.glob("poke_*_steps.zip"))
+    try:
+        current_dir = get_current_dir(basepath=Path(__file__).parent / "sessions")
+        step_files = list(current_dir.glob("poke_*_steps.zip"))
+    except IndexError:
+        step_files = list()
+
     if len(step_files) > 0:
         last_stepfile = sorted(step_files, key=lambda z: int(z.name.split("_")[1]))[-1]
         prefix = "%s/" % str(Path().cwd() / "baselines")
