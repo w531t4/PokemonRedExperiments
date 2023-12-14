@@ -14,61 +14,61 @@ from pyboy import PyBoy
 from pyboy.logger import log_level
 import mediapy as media
 import pandas as pd
-from typing import TypedDict, Dict, Union, List, Tuple, Any
-
+from typing import Dict, Union, List, Tuple, Any
 from gymnasium import Env, spaces
 from pyboy.utils import WindowEvent
 
-class RGEnvConfig(TypedDict):
-    debug: bool
-    headless: bool
-    save_final_state: bool
-    action_freq: int
-    init_state: str
-    max_steps: int
-    print_rewards: bool
-    save_video: bool
-    fast_video: bool
-    session_path: Path
-    gb_path: str
-    sim_frame_dist: float
-    use_screen_explore: bool
-    reward_scale: int
-    extra_buttons: bool
-    explore_weight: int
 
-class RedGymEnv(Env):
+class PokeRedEnv(Env):
+    metadata = {"render_modes": []}
     def __init__(self,
-                 config: RGEnvConfig = None,
+                 debug: bool = False,
+                 headless: bool = True,
+                 save_final_state: bool = True,
+                 action_freq: int = 24,
+                 init_state: Path = Path("has_pokedex_nballs.state"),
+                 max_steps: int = 2048 * 10,
+                 print_rewards: bool = True,
+                 save_video: bool = False,
+                 fast_video: bool = True,
+                 session_path: Path = Path("session_%s" % str(uuid.uuid4())[:8]),
+                 gb_path: Path = Path("PokemonRed.gb"),
+                 sim_frame_dist: float = 2_000_000.0,
+                 use_screen_explore: bool = True,
+                 reward_scale: int = 4, # previously 1
+                 extra_buttons: bool = False,
+                 explore_weight: int = 3, # previously 1
+                 early_stop: bool = False,
+                 instance_id: str = None,
+                 pyboy_bequiet: bool = True,
                  ) -> None:
-        self.debug = config['debug']
-        self.s_path = config['session_path']
-        self.save_final_state = config['save_final_state']
-        self.print_rewards = config['print_rewards']
+        self.debug = debug
+        self.s_path = session_path
+        self.save_final_state = save_final_state
+        self.print_rewards = print_rewards
         self.vec_dim = 4320 #1000
-        self.headless = config['headless']
+        self.headless = headless
         self.num_elements = 20000 # max
-        self.init_state = config['init_state']
-        self.act_freq = config['action_freq']
-        self.max_steps = config['max_steps']
-        self.early_stopping = config['early_stop']
-        self.save_video = config['save_video']
-        self.fast_video = config['fast_video']
+        self.init_state = init_state
+        self.act_freq = action_freq
+        self.max_steps = max_steps
+        self.early_stopping = early_stop
+        self.save_video = save_video
+        self.fast_video = fast_video
         self.video_interval = 256 * self.act_freq
         self.downsample_factor = 2
         self.frame_stacks = 3
-        self.explore_weight = 1 if 'explore_weight' not in config else config['explore_weight']
-        self.use_screen_explore = True if 'use_screen_explore' not in config else config['use_screen_explore']
-        self.similar_frame_dist = config['sim_frame_dist']
-        self.reward_scale = 1 if 'reward_scale' not in config else config['reward_scale']
-        self.extra_buttons = False if 'extra_buttons' not in config else config['extra_buttons']
-        self.instance_id = str(uuid.uuid4())[:8] if 'instance_id' not in config else config['instance_id']
+        self.explore_weight = explore_weight
+        self.use_screen_explore = use_screen_explore
+        self.similar_frame_dist = sim_frame_dist
+        self.reward_scale = reward_scale
+        self.extra_buttons = extra_buttons
+        self.instance_id = str(uuid.uuid4())[:8] if instance_id is None else instance_id
         self.s_path.mkdir(exist_ok=True)
         self.reset_count = 0
         self.all_runs: List[Dict[str, Union[int, float]]] = []
 
         # Set this in SOME subclasses
-        self.metadata = {"render.modes": []}
         self.reward_range = (0, 15000)
 
         self.valid_actions = [
@@ -115,19 +115,19 @@ class RedGymEnv(Env):
                                             dtype=np.uint8,
                                             )
 
-        head = 'headless' if config['headless'] else 'SDL2'
+        head = 'headless' if headless else 'SDL2'
 
         log_level("ERROR")
-        self.pyboy = PyBoy(config['gb_path'],
+        self.pyboy = PyBoy(str(gb_path),
                            debugging=False,
                            disable_input=False,
                            window_type=head,
-                           hide_window='--quiet' in sys.argv,
+                           hide_window=pyboy_bequiet,
             )
 
         self.screen = self.pyboy.botsupport_manager().screen()
 
-        if not config['headless']:
+        if not headless:
             self.pyboy.set_emulation_speed(6)
         else:
             self.pyboy.set_emulation_speed(0)
@@ -135,8 +135,11 @@ class RedGymEnv(Env):
 
     def reset(self,
               seed: Any = None,
+              options: Any = None,
               ) -> Tuple[np.ndarray, dict]:
-        self.seed = seed
+        # We need the following line to seed self.np_random
+        super().reset(seed=seed)
+
         # restart game, skipping credits
         with open(self.init_state, "rb") as f:
             self.pyboy.load_state(f)
