@@ -1,8 +1,7 @@
 
 import sys
 import uuid
-import os
-from math import floor, sqrt
+from math import floor
 import json
 from pathlib import Path
 import hnswlib
