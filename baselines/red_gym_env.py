@@ -489,12 +489,14 @@ class RedGymEnv(Env):
                             obs_memory: np.ndarray,
                             ) -> None:
         if self.print_rewards and (self.step_count % 100) == 0:
+            battle_indicator = self.read_m(0xD057)
             prog_string = f'step: {self.step_count:6d}'
             location = self.get_map_location(self.read_m(0xD35E))
             for key, val in self.progress_reward.items():
                 prog_string += f' {key}: {val:5.2f}'
             prog_string += f' sum: {self.total_reward:5.2f}'
             prog_string += f' i_id: {self.instance_id}'
+            prog_string += f' battle_status: {battle_indicator}'
             prog_string += f' location: {location} '
             print(f'\r{prog_string}',
                   end='',
