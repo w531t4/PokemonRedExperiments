@@ -186,7 +186,6 @@ class RedGymEnv(Env):
         self.max_opponent_level = 0
         self.max_event_rew = 0
         self.max_level_rew = 0
-        self.last_health = 1
         self.total_healing_rew = 0
         self.died_count = 0
         self.party_size = 0
@@ -241,9 +240,15 @@ class RedGymEnv(Env):
     def step(self,
              action: int,
              ) -> Tuple[np.ndarray, float, bool, bool, dict]:
+        # Observations needed PRIOR to executing the step
+        before_health = self.read_hp_fraction()
 
+        # The ACTION
         self.run_action_on_emulator(action)
+
         location = self.get_current_location()
+        after_health = self.read_hp_fraction()
+
         self.append_agent_stats(action,
                                 location=location,
                                 )
@@ -270,12 +275,12 @@ class RedGymEnv(Env):
             else:
                 self.update_seen_coords(location=location)
         self.did_knn_count_change = str(round(self.knn_index.get_current_count(), 5)) != curr_knn_count
-        self.update_heal_reward()
+        self.update_heal_reward(current_health=after_health,
+                                last_health=before_health,
+                                )
         self.party_size = self.read_m(0xD163)
 
         new_reward, new_prog = self.update_reward()
-
-        self.last_health = self.read_hp_fraction()
 
         # shift over short term reward memory
         self.recent_memory = np.roll(self.recent_memory, 3)
@@ -610,13 +615,15 @@ class RedGymEnv(Env):
                                                0xD169,
                                                ]]
 
-    def update_heal_reward(self):
-        cur_health = self.read_hp_fraction()
+    def update_heal_reward(self,
+                           current_health: float,
+                           last_health: float,
+                           ):
         # if health increased and party size did not change
-        if (cur_health > self.last_health and
+        if (current_health > last_health and
                 self.read_m(0xD163) == self.party_size):
-            if self.last_health > 0:
-                heal_amount = cur_health - self.last_health
+            if last_health > 0:
+                heal_amount = current_health - last_health
                 if heal_amount > 0.5:
                     print(f'healed: {heal_amount}')
                     self.save_screenshot('healing')
