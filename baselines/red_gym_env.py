@@ -490,23 +490,23 @@ class RedGymEnv(Env):
                             status_interval: int = 20,
                             ) -> None:
         if self.print_rewards and (self.step_count % status_interval) == 0:
-            battle_indicator = self.read_m(0xD057)
-            prog_string = f'step: {self.step_count:6d}'
-            location = self.get_map_location(self.read_m(0xD35E))
+            out_data: Dict[str, str] = dict()
+            out_data["step"] = self.step_count # f'{self.step_count:6d}'
+            out_data["location"] = self.get_map_location(self.read_m(0xD35E))
             for key, val in self.progress_reward.items():
-                prog_string += f' {key}: {val:5.2f}'
-            prog_string += f' sum: {self.total_reward:5.2f}'
-            prog_string += f' i_id: {self.instance_id}'
-            prog_string += f' battle_status: {battle_indicator}'
-            prog_string += f' location: {location} '
-            print(f'\r{prog_string}',
+                out_data[key] = round(val, 2) # f' {key}: {val:5.2f}'
+            out_data["sum"] = round(self.total_reward, 2) # f'{self.total_reward:5.2f}'
+            out_data["i_id"] = self.instance_id
+            out_data["battle_status"] = self.read_m(0xD057)
+            json_string = json.dumps(out_data)
+            print('\r%s' % json_string,
                   end='',
                   flush=True,
                   )
             txt_status = self.s_path / Path('txt_status')
             txt_status.mkdir(exist_ok=True)
             txt_total = txt_status / str(self.instance_id)
-            txt_total.write_text("%s\n" % prog_string)
+            txt_total.write_text("%s\n" % json_string)
 
         if self.step_count % status_interval == 0:
             plt.imsave(self.s_path / Path(f'curframe_{self.instance_id}.jpeg'),
