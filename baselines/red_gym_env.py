@@ -335,13 +335,8 @@ class RedGymEnv(Env):
         x_pos = self.read_m(0xD362)
         y_pos = self.read_m(0xD361)
         map_n = self.read_m(0xD35E)
-        levels = [self.read_m(a) for a in [0xD18C,
-                                           0xD1B8,
-                                           0xD1E4,
-                                           0xD210,
-                                           0xD23C,
-                                           0xD268,
-                                           ]]
+        levels = self.get_my_pokemon_levels()
+
         expl: Tuple[str, int]
         if self.use_screen_explore:
             expl = ('frames',
@@ -560,14 +555,16 @@ class RedGymEnv(Env):
         # add padding so zero will read '0b100000000' instead of '0b0'
         return bin(256 + self.read_m(addr))[-bit-1] == '1'
 
+    def get_my_pokemon_levels(self) -> List[int]:
+        return [self.read_m(x) for x in [0xD18C,
+                                         0xD1B8,
+                                         0xD1E4,
+                                         0xD210,
+                                         0xD23C,
+                                         0xD268,
+                                         ]]
     def get_levels_sum(self):
-        poke_levels = [max(self.read_m(a) - 2, 0) for a in [0xD18C,
-                                                            0xD1B8,
-                                                            0xD1E4,
-                                                            0xD210,
-                                                            0xD23C,
-                                                            0xD268,
-                                                            ]]
+        poke_levels = [max(x - 2, 0) for x in self.get_my_pokemon_levels()]
         return max(sum(poke_levels) - 4, 0) # subtract starting pokemon level
 
     def get_levels_reward(self) -> float:
