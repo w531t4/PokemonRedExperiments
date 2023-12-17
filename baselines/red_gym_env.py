@@ -487,8 +487,9 @@ class RedGymEnv(Env):
     def save_and_print_info(self,
                             done: bool,
                             obs_memory: np.ndarray,
+                            status_interval: int = 20,
                             ) -> None:
-        if self.print_rewards and (self.step_count % 100) == 0:
+        if self.print_rewards and (self.step_count % status_interval) == 0:
             battle_indicator = self.read_m(0xD057)
             prog_string = f'step: {self.step_count:6d}'
             location = self.get_map_location(self.read_m(0xD35E))
@@ -507,7 +508,7 @@ class RedGymEnv(Env):
             txt_total = txt_status / str(self.instance_id)
             txt_total.write_text("%s\n" % prog_string)
 
-        if self.step_count % 50 == 0:
+        if self.step_count % status_interval == 0:
             plt.imsave(self.s_path / Path(f'curframe_{self.instance_id}.jpeg'),
                        self.render(reduce_res=False),
                        )
