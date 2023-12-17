@@ -249,6 +249,11 @@ class RedGymEnv(Env):
         location = self.get_current_location()
         after_health = self.read_hp_fraction()
         after_party_size = self.read_m(0xD163)
+        # The screen transitions (prior to battle) seem to be encouraging
+        # it to go into battle more often. 0xd57 is non-zero when in battle
+        # (and during transitions).
+        battle_indicator = self.read_m(0xD057)
+
         self.append_agent_stats(action,
                                 location=location,
                                 party_size=after_party_size,
@@ -265,10 +270,7 @@ class RedGymEnv(Env):
         obs_flat: np.float32 = obs_memory[frame_start:frame_start+self.output_shape[0],
                               ...].flatten().astype(np.float32)
 
-        # The screen transitions (prior to battle) seem to be encouraging
-        # it to go into battle more often. 0xd57 is non-zero when in battle
-        # (and during transitions).
-        battle_indicator = self.read_m(0xD057)
+
         curr_knn_count = str(round(self.knn_index.get_current_count(), 5))
         if battle_indicator == 0:
             if self.use_screen_explore:
@@ -295,6 +297,7 @@ class RedGymEnv(Env):
         self.save_and_print_info(step_limit_reached,
                                  obs_memory,
                                  location=location,
+                                 battle_indicator=battle_indicator,
                                  )
 
         self.step_count += 1
@@ -511,6 +514,7 @@ class RedGymEnv(Env):
                             done: bool,
                             obs_memory: np.ndarray,
                             location: MapLocation,
+                            battle_indicator: int,
                             status_interval: int = 20,
                             ) -> None:
         if self.print_rewards and (self.step_count % status_interval) == 0:
@@ -522,7 +526,7 @@ class RedGymEnv(Env):
             out_data["sum"] = round(self.total_reward, 2) # f'{self.total_reward:5.2f}'
             out_data["lvlsum"] = self.get_levels_sum()
             out_data["i_id"] = self.instance_id
-            out_data["battle_status"] = self.read_m(0xD057)
+            out_data["battle_status"] = battle_indicator
             out_data["knn_chg"] = self.did_knn_count_change
             json_string = json.dumps(out_data)
             print('\r%s' % json_string,
