@@ -602,7 +602,7 @@ class RedGymEnv(Env):
         return base + post
 
     def get_badges(self):
-        return self.bit_count(self.read_m(0xD356))
+        return self.__class__.bit_count(self.read_m(0xD356))
 
     def read_party(self):
         return [self.read_m(addr) for addr in [0xD164,
@@ -636,7 +636,7 @@ class RedGymEnv(Env):
         return max(
             sum(
                 [
-                    self.bit_count(self.read_m(i))
+                    self.__class__.bit_count(self.read_m(i))
                     for i in range(event_flags_start, event_flags_end)
                 ]
             )
@@ -743,8 +743,8 @@ class RedGymEnv(Env):
         return 256 * self.read_m(start) + self.read_m(start+1)
 
     # built-in since python 3.10
-    def bit_count(self,
-                  bits: int,
+    @staticmethod
+    def bit_count(bits: int,
                   ) -> int:
         return bin(bits).count('1')
 
@@ -753,15 +753,15 @@ class RedGymEnv(Env):
                     ) -> int:
         return 256*256*self.read_m(start_add) + 256*self.read_m(start_add+1) + self.read_m(start_add+2)
 
-    def read_bcd(self,
-                 num: int,
+    @staticmethod
+    def read_bcd(num: int,
                  ) -> int:
         return 10 * ((num >> 4) & 0x0f) + (num & 0x0f)
 
     def read_money(self) -> int:
-        return (100 * 100 * self.read_bcd(self.read_m(0xD347)) +
-                100 * self.read_bcd(self.read_m(0xD348)) +
-                self.read_bcd(self.read_m(0xD349)))
+        return (100 * 100 * self.__class__.read_bcd(self.read_m(0xD347)) +
+                100 * self.__class__.read_bcd(self.read_m(0xD348)) +
+                self.__class__.read_bcd(self.read_m(0xD349)))
 
     @staticmethod
     def get_map_location(map_idx: int,
