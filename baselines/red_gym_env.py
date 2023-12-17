@@ -15,7 +15,7 @@ from pyboy import PyBoy
 from pyboy.logger import log_level
 import mediapy as media
 import pandas as pd
-from typing import TypedDict, Dict, Union, List, Tuple, Any
+from typing import TypedDict, Dict, Union, List, Tuple, Any, NamedTuple
 
 from gymnasium import Env, spaces
 from pyboy.utils import WindowEvent
@@ -37,6 +37,12 @@ class RGEnvConfig(TypedDict):
     reward_scale: int
     extra_buttons: bool
     explore_weight: int
+
+class MapLocation(NamedTuple):
+    x: int
+    y: int
+    map_id: int
+    map_name: str
 
 class RedGymEnv(Env):
     def __init__(self,
@@ -239,7 +245,10 @@ class RedGymEnv(Env):
              ) -> Tuple[np.ndarray, float, bool, bool, dict]:
 
         self.run_action_on_emulator(action)
-        self.append_agent_stats(action)
+        location = self.get_current_location()
+        self.append_agent_stats(action,
+                                location=location,
+                                )
 
         self.recent_frames = np.roll(self.recent_frames,
                                      1,
@@ -261,7 +270,7 @@ class RedGymEnv(Env):
             if self.use_screen_explore:
                 self.update_frame_knn_index(obs_flat)
             else:
-                self.update_seen_coords()
+                self.update_seen_coords(location=location)
         self.did_knn_count_change = str(round(self.knn_index.get_current_count(), 5)) != curr_knn_count
         self.update_heal_reward()
         self.party_size = self.read_m(0xD163)
@@ -280,6 +289,7 @@ class RedGymEnv(Env):
 
         self.save_and_print_info(step_limit_reached,
                                  obs_memory,
+                                 location=location,
                                  )
 
         self.step_count += 1
@@ -329,16 +339,18 @@ class RedGymEnv(Env):
                                                       update_mem=False,
                                                       ))
 
-    def get_current_location(self) -> Tuple[int, int, int]:
-        x_pos = self.read_m(0xD362)
-        y_pos = self.read_m(0xD361)
-        map_n = self.read_m(0xD35E)
-        return x_pos, y_pos, map_n
+    def get_current_location(self) -> MapLocation:
+        map_id = self.read_m(0xD35E)
+        return MapLocation(x=self.read_m(0xD362),
+                           y=self.read_m(0xD361),
+                           map_id=map_id,
+                           map_name=self.__class__.get_map_location(map_id),
+                           )
 
     def append_agent_stats(self,
                            action: int,
+                           location: MapLocation,
                            ) -> None:
-        x_pos, y_pos, map_n = self.get_current_location()
         levels = self.get_my_pokemon_levels()
 
         expl: Tuple[str, int]
@@ -350,10 +362,10 @@ class RedGymEnv(Env):
             expl = ('coord_count',
                     len(self.seen_coords))
         self.agent_stats.append({'step': self.step_count,
-                                 'x': x_pos,
-                                 'y': y_pos,
-                                 'map': map_n,
-                                 'map_location': self.get_map_location(map_n),
+                                 'x': location.x,
+                                 'y': location.y,
+                                 'map': location.map_id,
+                                 'map_location': location.map_name,
                                  'last_action': action,
                                  'pcount': self.read_m(0xD163),
                                  'levels': levels,
@@ -396,9 +408,10 @@ class RedGymEnv(Env):
                     frame_vec, np.array([self.knn_index.get_current_count()])
                 )
 
-    def update_seen_coords(self) -> None:
-        x_pos, y_pos, map_n = self.get_current_location()
-        coord_string = f"x:{x_pos} y:{y_pos} m:{map_n}"
+    def update_seen_coords(self,
+                           location: MapLocation,
+                           ) -> None:
+        coord_string = f"x:{location.x} y:{location.y} m:{location.map_id}"
         if self.get_levels_sum() >= 22 and not self.levels_satisfied:
             self.levels_satisfied = True
             self.base_explore = len(self.seen_coords)
@@ -492,12 +505,13 @@ class RedGymEnv(Env):
     def save_and_print_info(self,
                             done: bool,
                             obs_memory: np.ndarray,
+                            location: MapLocation,
                             status_interval: int = 20,
                             ) -> None:
         if self.print_rewards and (self.step_count % status_interval) == 0:
             out_data: Dict[str, str] = dict()
             out_data["step"] = self.step_count # f'{self.step_count:6d}'
-            out_data["location"] = self.get_map_location(self.read_m(0xD35E))
+            out_data["location"] = location.map_name
             for key, val in self.progress_reward.items():
                 out_data[key] = round(val, 2) # f' {key}: {val:5.2f}'
             out_data["sum"] = round(self.total_reward, 2) # f'{self.total_reward:5.2f}'
@@ -755,8 +769,8 @@ class RedGymEnv(Env):
                 100 * self.read_bcd(self.read_m(0xD348)) +
                 self.read_bcd(self.read_m(0xD349)))
 
-    def get_map_location(self,
-                         map_idx: int,
+    @staticmethod
+    def get_map_location(map_idx: int,
                          ) -> str:
         map_locations = {
             0: "Pallet Town",
