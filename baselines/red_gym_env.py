@@ -133,6 +133,7 @@ class RedGymEnv(Env):
                            hide_window='--quiet' in sys.argv,
             )
 
+        self.seen_coords: Dict[str, int] = {}
         self.screen = self.pyboy.botsupport_manager().screen()
 
         if not config['headless']:
@@ -152,7 +153,7 @@ class RedGymEnv(Env):
         if self.use_screen_explore:
             self.init_knn()
         else:
-            self.init_map_mem()
+            self.seen_coords = {}
 
         self.recent_memory = np.zeros((self.output_shape[1]*self.memory_height,
                                        3,
@@ -206,9 +207,6 @@ class RedGymEnv(Env):
                                   ef_construction=100,
                                   M=16,
                                   )
-
-    def init_map_mem(self) -> None:
-        self.seen_coords: Dict[str, int] = {}
 
     def render(self,
                reduce_res: bool = True,
@@ -415,7 +413,6 @@ class RedGymEnv(Env):
         if self.get_levels_sum() >= 22 and not self.levels_satisfied:
             self.levels_satisfied = True
             self.base_explore = len(self.seen_coords)
-            self.seen_coords = {}
 
         self.seen_coords[coord_string] = self.step_count
 
