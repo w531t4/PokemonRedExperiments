@@ -499,6 +499,7 @@ class RedGymEnv(Env):
             for key, val in self.progress_reward.items():
                 out_data[key] = round(val, 2) # f' {key}: {val:5.2f}'
             out_data["sum"] = round(self.total_reward, 2) # f'{self.total_reward:5.2f}'
+            out_data["lvlsum"] = self.get_levels_sum()
             out_data["i_id"] = self.instance_id
             out_data["battle_status"] = self.read_m(0xD057)
             out_data["knn_chg"] = self.did_knn_count_change
