@@ -422,6 +422,14 @@ class RedGymEnv(Env):
 
         self.seen_coords[coord_string] = self.step_count
 
+    def get_reward_delta(old: Tuple[float, float, float],
+                         new: Tuple[float, float, float],
+                         ) -> Tuple[float, float, float]:
+        return (new[0]-old[0],
+                new[1]-old[1],
+                new[2]-old[2],
+                ),
+
     def update_reward(self) -> Tuple[Union[int, float], Tuple[float, float, float]]:
         # compute reward
         old_prog = self.group_rewards()
@@ -435,10 +443,9 @@ class RedGymEnv(Env):
 
         self.total_reward = new_total
         return (new_step,
-                (new_prog[0]-old_prog[0],
-                 new_prog[1]-old_prog[1],
-                 new_prog[2]-old_prog[2],
-                 ),
+                self.get_reward_delta(old=old_prog,
+                                      new=new_prog,
+                                      ),
                )
 
     def group_rewards(self) -> Tuple[float, float, float]:
