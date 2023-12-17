@@ -188,7 +188,6 @@ class RedGymEnv(Env):
         self.max_level_rew = 0
         self.total_healing_rew = 0
         self.died_count = 0
-        self.party_size = 0
         self.step_count = 0
         self.progress_reward = self.get_game_state_reward()
         self.total_reward = sum([val for _, val in self.progress_reward.items()])
@@ -242,15 +241,17 @@ class RedGymEnv(Env):
              ) -> Tuple[np.ndarray, float, bool, bool, dict]:
         # Observations needed PRIOR to executing the step
         before_health = self.read_hp_fraction()
+        before_party_size = self.read_m(0xD163)
 
         # The ACTION
         self.run_action_on_emulator(action)
 
         location = self.get_current_location()
         after_health = self.read_hp_fraction()
-
+        after_party_size = self.read_m(0xD163)
         self.append_agent_stats(action,
                                 location=location,
+                                party_size=after_party_size,
                                 )
 
         self.recent_frames = np.roll(self.recent_frames,
@@ -277,8 +278,9 @@ class RedGymEnv(Env):
         self.did_knn_count_change = str(round(self.knn_index.get_current_count(), 5)) != curr_knn_count
         self.update_heal_reward(current_health=after_health,
                                 last_health=before_health,
+                                before_party_size=before_party_size,
+                                after_party_size=after_party_size,
                                 )
-        self.party_size = self.read_m(0xD163)
 
         new_reward, new_prog = self.update_reward()
 
@@ -353,6 +355,7 @@ class RedGymEnv(Env):
     def append_agent_stats(self,
                            action: int,
                            location: MapLocation,
+                           party_size: int,
                            ) -> None:
         levels = self.get_my_pokemon_levels()
 
@@ -370,7 +373,7 @@ class RedGymEnv(Env):
                                  'map': location.map_id,
                                  'map_location': location.map_name,
                                  'last_action': action,
-                                 'pcount': self.read_m(0xD163),
+                                 'pcount': party_size,
                                  'levels': levels,
                                  'levels_sum': sum(levels),
                                  'ptypes': self.read_party(),
@@ -623,10 +626,12 @@ class RedGymEnv(Env):
     def update_heal_reward(self,
                            current_health: float,
                            last_health: float,
+                           before_party_size: int,
+                           after_party_size: int,
                            ):
         # if health increased and party size did not change
         if (current_health > last_health and
-                self.read_m(0xD163) == self.party_size):
+                before_party_size == after_party_size):
             if last_health > 0:
                 heal_amount = current_health - last_health
                 if heal_amount > 0.5:
