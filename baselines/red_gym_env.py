@@ -68,6 +68,7 @@ class RedGymEnv(Env):
         self.reset_count = 0
         self.all_runs: List[Dict[str, Union[int, float]]] = []
 
+        self.did_knn_count_change: bool = False
         # Set this in SOME subclasses
         self.metadata = {"render.modes": []}
         self.reward_range = (0, 15000)
@@ -186,6 +187,7 @@ class RedGymEnv(Env):
         self.progress_reward = self.get_game_state_reward()
         self.total_reward = sum([val for _, val in self.progress_reward.items()])
         self.reset_count += 1
+        self.did_knn_count_change = False
         return self.render(), {}
 
     def init_knn(self) -> None:
@@ -254,12 +256,13 @@ class RedGymEnv(Env):
         # it to go into battle more often. 0xd57 is non-zero when in battle
         # (and during transitions).
         battle_indicator = self.read_m(0xD057)
+        curr_knn_count = str(round(self.knn_index.get_current_count(), 5))
         if battle_indicator == 0:
             if self.use_screen_explore:
                 self.update_frame_knn_index(obs_flat)
             else:
                 self.update_seen_coords()
-
+        self.did_knn_count_change = str(round(self.knn_index.get_current_count(), 5)) != curr_knn_count
         self.update_heal_reward()
         self.party_size = self.read_m(0xD163)
 
@@ -498,6 +501,7 @@ class RedGymEnv(Env):
             out_data["sum"] = round(self.total_reward, 2) # f'{self.total_reward:5.2f}'
             out_data["i_id"] = self.instance_id
             out_data["battle_status"] = self.read_m(0xD057)
+            out_data["knn_chg"] = self.did_knn_count_change
             json_string = json.dumps(out_data)
             print('\r%s' % json_string,
                   end='',
