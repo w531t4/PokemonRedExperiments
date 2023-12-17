@@ -284,7 +284,7 @@ class RedGymEnv(Env):
                                 after_party_size=after_party_size,
                                 )
 
-        new_reward, new_prog = self.update_reward()
+        new_reward, new_prog = self.update_reward(hp=after_health)
 
         # shift over short term reward memory
         self.recent_memory = np.roll(self.recent_memory, 3)
@@ -430,14 +430,17 @@ class RedGymEnv(Env):
                 new[2]-old[2],
                 ),
 
-    def update_reward(self) -> Tuple[Union[int, float], Tuple[float, float, float]]:
+    def update_reward(self,
+                      hp: float,
+                      ) -> Tuple[Union[int, float],
+                                 Tuple[float, float, float]]:
         # compute reward
-        old_prog = self.group_rewards()
+        old_prog = self.group_rewards(hp=hp)
         self.progress_reward = self.get_game_state_reward()
-        new_prog = self.group_rewards()
+        new_prog = self.group_rewards(hp=hp)
         new_total = sum([val for _, val in self.progress_reward.items()]) #sqrt(self.explore_reward * self.progress_reward)
         new_step = new_total - self.total_reward
-        if new_step < 0 and self.read_hp_fraction() > 0:
+        if new_step < 0 and hp > 0:
             #print(f'\n\nreward went down! {self.progress_reward}\n\n')
             self.save_screenshot('neg_reward')
 
@@ -448,11 +451,13 @@ class RedGymEnv(Env):
                                       ),
                )
 
-    def group_rewards(self) -> Tuple[float, float, float]:
+    def group_rewards(self,
+                      hp: float,
+                      ) -> Tuple[float, float, float]:
         prog = self.progress_reward
         # these values are only used by memory
         return (prog['level'] * 100 / self.reward_scale,
-                self.read_hp_fraction()*2000,
+                hp*2000,
                 prog['explore'] * 150 / (self.explore_weight * self.reward_scale))
                #(prog['events'],
                # prog['levels'] + prog['party_xp'],
@@ -483,7 +488,7 @@ class RedGymEnv(Env):
             memory[col, row] = last_pixel * (255 // col_steps)
             return memory
 
-        level, hp, explore = self.group_rewards()
+        level, hp, explore = self.group_rewards(hp=self.read_hp_fraction())
         full_memory = np.stack((make_reward_channel(level),
                                 make_reward_channel(hp),
                                 make_reward_channel(explore)
