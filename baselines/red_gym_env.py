@@ -329,12 +329,16 @@ class RedGymEnv(Env):
                                                       update_mem=False,
                                                       ))
 
-    def append_agent_stats(self,
-                           action: int,
-                           ) -> None:
+    def get_current_location(self) -> Tuple[int, int, int]:
         x_pos = self.read_m(0xD362)
         y_pos = self.read_m(0xD361)
         map_n = self.read_m(0xD35E)
+        return x_pos, y_pos, map_n
+
+    def append_agent_stats(self,
+                           action: int,
+                           ) -> None:
+        x_pos, y_pos, map_n = self.get_current_location()
         levels = self.get_my_pokemon_levels()
 
         expl: Tuple[str, int]
@@ -393,9 +397,7 @@ class RedGymEnv(Env):
                 )
 
     def update_seen_coords(self) -> None:
-        x_pos = self.read_m(0xD362)
-        y_pos = self.read_m(0xD361)
-        map_n = self.read_m(0xD35E)
+        x_pos, y_pos, map_n = self.get_current_location()
         coord_string = f"x:{x_pos} y:{y_pos} m:{map_n}"
         if self.get_levels_sum() >= 22 and not self.levels_satisfied:
             self.levels_satisfied = True
