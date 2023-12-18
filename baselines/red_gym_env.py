@@ -242,7 +242,7 @@ class RedGymEnv(Env):
         # Observations needed PRIOR to executing the step
         before_health = self.read_hp_fraction()
         before_party_size = self.read_m(0xD163)
-
+        before_prog = self.group_rewards(hp=before_health)
         # The ACTION
         self.run_action_on_emulator(action)
 
@@ -284,7 +284,11 @@ class RedGymEnv(Env):
                                 after_party_size=after_party_size,
                                 )
 
-        new_reward, new_prog = self.update_reward(hp=after_health)
+        # compute reward
+        self.progress_reward = self.get_game_state_reward()
+        new_reward, new_prog = self.update_reward(old_prog=before_prog,
+                                                  hp=after_health,
+                                                  )
 
         # shift over short term reward memory
         self.recent_memory = np.roll(self.recent_memory, 3)
@@ -422,21 +426,20 @@ class RedGymEnv(Env):
 
         self.seen_coords[coord_string] = self.step_count
 
+    @staticmethod
     def get_reward_delta(old: Tuple[float, float, float],
                          new: Tuple[float, float, float],
                          ) -> Tuple[float, float, float]:
         return (new[0]-old[0],
                 new[1]-old[1],
                 new[2]-old[2],
-                ),
+                )
 
     def update_reward(self,
+                      old_prog: Tuple[float, float, float],
                       hp: float,
                       ) -> Tuple[Union[int, float],
                                  Tuple[float, float, float]]:
-        # compute reward
-        old_prog = self.group_rewards(hp=hp)
-        self.progress_reward = self.get_game_state_reward()
         new_prog = self.group_rewards(hp=hp)
         new_total = sum([val for _, val in self.progress_reward.items()]) #sqrt(self.explore_reward * self.progress_reward)
         new_step = new_total - self.total_reward
@@ -445,11 +448,10 @@ class RedGymEnv(Env):
             self.save_screenshot('neg_reward')
 
         self.total_reward = new_total
-        return (new_step,
-                self.get_reward_delta(old=old_prog,
+        delta = self.get_reward_delta(old=old_prog,
                                       new=new_prog,
-                                      ),
-               )
+                                      )
+        return (new_step, delta)
 
     def group_rewards(self,
                       hp: float,
