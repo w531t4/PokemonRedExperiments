@@ -45,7 +45,7 @@ if __name__ == '__main__':
                   'gb_path': '../PokemonRed.gb',
                   'debug': False,
                   'sim_frame_dist': 2_000_000.0,
-                  'extra_buttons': True,
+                  'extra_buttons': False,
             }
 
     num_cpu = 1 #64 #46  # Also sets the number of episodes per training iteration
