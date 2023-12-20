@@ -1,51 +1,30 @@
 from os.path import exists
 from pathlib import Path
 import sys
-from red_gym_env import RedGymEnv
+import pokemonred_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import CheckpointCallback
-
-def make_env(rank,
-             env_conf,
-             seed=0,
-             ):
-    """
-    Utility function for multiprocessed env.
-    :param env_id: (str) the environment ID
-    :param num_env: (int) the number of environments you wish to have in subprocesses
-    :param seed: (int) the initial seed for RNG
-    :param rank: (int) index of the subprocess
-    """
-    def _init():
-        env = RedGymEnv(env_conf)
-        env.seed(seed + rank)
-        return env
-    set_random_seed(seed)
-    return _init
 
 def run_save(save):
     save = Path(save)
     ep_length = 2048 * 8
     sess_path = f'grid_renders/session_{save.stem}'
-    env_config = {'headless': True,
-                  'save_final_state': True,
-                  'early_stop': False,
-                  'action_freq': 24,
-                  'init_state': '../has_pokedex_nballs.state',
-                  'max_steps': ep_length,
-                  'print_rewards': True,
-                  'save_video': True,
-                  'fast_video': False,
-                  'session_path': sess_path,
-                  'gb_path': '../PokemonRed.gb',
-                  'debug': False,
-                  'sim_frame_dist': 2_000_000.0,
-            }
     num_cpu = 40  # Also sets the number of episodes per training iteration
-    env = SubprocVecEnv([make_env(i, env_config) for i in range(num_cpu)])
-
+    env = make_vec_env(env_id="PokeRed-v0",
+                       n_envs=num_cpu,
+                       seed=None,
+                       vec_env_cls=SubprocVecEnv,
+                       env_kwargs=dict(pyboy_bequiet='--quiet' in sys.argv,
+                                       gb_path=Path("../PokemonRed.gb"),
+                                       init_state=Path('../has_pokedex_nballs.state'),
+                                       session_path=sess_path,
+                                       max_steps=ep_length,
+                                       save_video=True,
+                                       fast_vide=False,
+                                       )
+                       )
     checkpoint_callback = CheckpointCallback(save_freq=ep_length,
                                              save_path=sess_path,
                                              name_prefix='poke',
@@ -63,12 +42,14 @@ def run_save(save):
         model = PPO.load(file_name,
                          env=env,
                          custom_objects=custom_objects,
+                         force_reset=True,
                          )
-        model.n_steps = ep_length
-        model.n_envs = num_cpu
-        model.rollout_buffer.buffer_size = ep_length
-        model.rollout_buffer.n_envs = num_cpu
-        model.rollout_buffer.reset()
+        # This code appears to break the values originally set the original policy...
+        #model.n_steps = ep_length
+        #model.n_envs = num_cpu
+        #model.rollout_buffer.buffer_size = ep_length
+        #model.rollout_buffer.n_envs = num_cpu
+        #model.rollout_buffer.reset()
     else:
         print('initializing new policy')
         model = PPO('CnnPolicy',

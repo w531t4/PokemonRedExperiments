@@ -1,7 +1,10 @@
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from red_gym_env import RedGymEnv
+import sys
+import pokemonred_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.env_util import make_vec_env
 
 def run_recorded_actions_on_emulator_and_save_video(sess_id,
                                                     instance_id,
@@ -15,24 +18,26 @@ def run_recorded_actions_on_emulator_and_save_video(sess_id,
     action_arrays = np.array_split(tdf, np.array((tdf["step"].astype(int) == 0).sum()))
     action_list = [int(x) for x in list(action_arrays[run_index]["last_action"])]
     max_steps = len(action_list) - 1
+    env = make_vec_env(env_id="PokeRed-v0",
+                       n_envs=1,
+                       seed=None,
+                       vec_env_cls=SubprocVecEnv,
+                       env_kwargs=dict(pyboy_bequiet='--quiet' in sys.argv,
+                                       gb_path=Path("../PokemonRed.gb"),
+                                       init_state=Path('../has_pokedex_nballs.state'),
+                                       session_path=sess_path,
+                                       max_steps=max_steps,
+                                       print_rewards=False,
+                                       save_video=True,
+                                       fast_video=False,
+                                       instance_id=f'{instance_id}_recorded',
+                                       )
+                       )
 
-    env_config = {'headless': True,
-                  'save_final_state': True,
-                  'early_stop': False,
-                  'action_freq': 24,
-                  'init_state': '../has_pokedex_nballs.state',
-                  'max_steps': max_steps, #ep_length,
-                  'print_rewards': False,
-                  'save_video': True,
-                  'fast_video': False,
-                  'session_path': sess_path,
-                  'gb_path': '../PokemonRed.gb',
-                  'debug': False,
-                  'sim_frame_dist': 2_000_000.0,
-                  'instance_id': f'{instance_id}_recorded',
-    }
-    env = RedGymEnv(env_config)
-    env.reset_count = run_index
+    env.set_attr(attr_name="reset_count",
+                 value=run_index,
+                 indicies=[0],
+                 )
 
     obs = env.reset()
     for action in action_list:

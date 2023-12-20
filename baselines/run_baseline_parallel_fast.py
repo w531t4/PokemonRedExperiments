@@ -26,8 +26,7 @@ if __name__ == '__main__':
     stamp = get_stamp()
     ep_length = 2048 * 10
     sess_path = Path(f'sessions/session_{stamp}_{sess_id}')
-    env = make_vec_env(
-                       env_id="PokeRed-v0",
+    env = make_vec_env(env_id="PokeRed-v0",
                        n_envs=num_cpu,
                        seed=None,
                        vec_env_cls=SubprocVecEnv,

@@ -1,57 +1,29 @@
 from os.path import exists
 from pathlib import Path
 import uuid
-from red_gym_env import RedGymEnv
+import sys
+import pokemonred_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import CheckpointCallback
 
-def make_env(rank,
-             env_conf,
-             seed=0,
-             ):
-    """
-    Utility function for multiprocessed env.
-    :param env_id: (str) the environment ID
-    :param num_env: (int) the number of environments you wish to have in subprocesses
-    :param seed: (int) the initial seed for RNG
-    :param rank: (int) index of the subprocess
-    """
-    def _init():
-        env = RedGymEnv(env_conf)
-        env.reset(seed=(seed + rank))
-        return env
-    set_random_seed(seed)
-    return _init
 
 if __name__ == '__main__':
-
-
     ep_length = 2048 * 8
     sess_path = Path(f'session_{str(uuid.uuid4())[:8]}')
-
-    env_config = {'headless': True,
-                  'save_final_state': True,
-                  'early_stop': False,
-                  'action_freq': 24,
-                  'init_state': '../has_pokedex_nballs.state',
-                  'max_steps': ep_length,
-                  'print_rewards': True,
-                  'save_video': False,
-                  'fast_video': True,
-                  'session_path': sess_path,
-                  'gb_path': '../PokemonRed.gb',
-                  'debug': False,
-                  'sim_frame_dist': 2_000_000.0,
-                  'use_screen_explore': True,
-                  'extra_buttons': False,
-            }
-
-
     num_cpu = 44 #64 #46  # Also sets the number of episodes per training iteration
-    env = SubprocVecEnv([make_env(i, env_config) for i in range(num_cpu)])
-
+    env = make_vec_env(env_id="PokeRed-v0",
+                       n_envs=num_cpu,
+                       seed=None,
+                       vec_env_cls=SubprocVecEnv,
+                       env_kwargs=dict(pyboy_bequiet='--quiet' in sys.argv,
+                                       gb_path=Path("../PokemonRed.gb"),
+                                       init_state=Path('../has_pokedex_nballs.state'),
+                                       session_path=sess_path,
+                                       max_steps=ep_length,
+                                       )
+                       )
     checkpoint_callback = CheckpointCallback(save_freq=ep_length,
                                              save_path=sess_path,
                                              name_prefix='poke',
@@ -65,12 +37,14 @@ if __name__ == '__main__':
         print('\nloading checkpoint')
         model = PPO.load(file_name,
                          env=env,
+                         force_reset=True,
                          )
-        model.n_steps = ep_length
-        model.n_envs = num_cpu
-        model.rollout_buffer.buffer_size = ep_length
-        model.rollout_buffer.n_envs = num_cpu
-        model.rollout_buffer.reset()
+        # This code appears to break the values originally set the original policy...
+        #model.n_steps = ep_length // 8
+        #model.n_envs = num_cpu
+        #model.rollout_buffer.buffer_size = ep_length
+        #model.rollout_buffer.n_envs = num_cpu
+        #model.rollout_buffer.reset()
     else:
         model = PPO('CnnPolicy',
                     env,
