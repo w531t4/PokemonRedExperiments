@@ -52,6 +52,7 @@ class PokeRedEnv(Env):
                  explore_weight: int = 3, # previously 1
                  instance_id: str = None,
                  pyboy_bequiet: bool = True,
+                 **kwargs,
                  ) -> None:
         self.debug = debug
         self.s_path = session_path
