@@ -5,7 +5,7 @@ setup(
     version="0.0.1",
     install_requires=[
                       "matplotlib==3.7.1",
-                      "hnswlib==0.7.0",
+                      "hnswlib",
                       "numpy==1.25.0",
                       "einops==0.6.1",
                       "matplotlib==3.7.1",
