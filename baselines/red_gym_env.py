@@ -679,7 +679,8 @@ class RedGymEnv(Env):
                         ) -> None:
         ss_dir = self.s_path / Path('screenshots')
         ss_dir.mkdir(exist_ok=True)
-        plt.imsave(ss_dir / Path(f'frame{self.instance_id}_r{self.total_reward:.4f}_{self.reset_count}_{name}.jpeg'),
+        path = ss_dir / Path(f'frame{self.instance_id}_r{self.total_reward:.4f}_{self.reset_count}_{name}.jpeg')
+        plt.imsave(path,
                    self.render(reduce_res=False),
                    )
 
