@@ -31,7 +31,7 @@ class MapLocation(NamedTuple):
     map_name: str
 
 class PokeRedEnv(Env):
-    metadata = {"render_modes": []}
+    metadata = {"render_modes": ["rgb_array"]}
     def __init__(self,
                  headless: bool = True,
                  save_final_state: bool = True,

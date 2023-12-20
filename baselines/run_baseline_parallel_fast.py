@@ -1,15 +1,10 @@
-from os.path import exists
 from pathlib import Path
 import uuid
-from typing import Dict, Union, List
-import gymnasium
+from typing import Union, List
 import pokemonred_env
-from red_gym_env import RedGymEnv, RGEnvConfig
 from stable_baselines3 import PPO
-from stable_baselines3.common import env_checker
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from tensorboard_callback import TensorboardCallback
 from datetime import datetime
@@ -18,24 +13,6 @@ import sys
 
 def get_stamp() -> str:
     return datetime.utcnow().strftime('%Y%m%d_%H%M')
-
-#def make_env(rank: int,
-#             env_conf: Dict[str, Union[bool, int, str, float]],
-#             seed: int = 0,
-#             ):
-#    """
-#    Utility function for multiprocessed env.
-#    :param env_id: (str) the environment ID
-#    :param num_env: (int) the number of environments you wish to have in subprocesses
-#    :param seed: (int) the initial seed for RNG
-#    :param rank: (int) index of the subprocess
-#    """
-#    def _init():
-#        env = RedGymEnv(env_conf)
-#        env.reset(seed=(seed + rank))
-#        return env
-#    set_random_seed(seed)
-#    return _init
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
@@ -49,24 +26,25 @@ if __name__ == '__main__':
     stamp = get_stamp()
     ep_length = 2048 * 10
     sess_path = Path(f'sessions/session_{stamp}_{sess_id}')
-
-    poke = gymnasium.make(id='pokemonred_env/PokeRed-v0',
-                          pyboy_bequiet='--quiet' in sys.argv,
-                          gb_path=Path("../PokemonRed.gb"),
-                          init_state=Path('../has_pokedex_nballs.state'),
-                          max_steps=ep_length,
-                          )
-    env = make_vec_env(poke,
+    env = make_vec_env(
+                       env_id="PokeRed-v0",
                        n_envs=num_cpu,
-                       seed=0,
+                       seed=None,
                        vec_env_cls=SubprocVecEnv,
+                       env_kwargs=dict(pyboy_bequiet='--quiet' in sys.argv,
+                                       gb_path=Path("../PokemonRed.gb"),
+                                       init_state=Path('../has_pokedex_nballs.state'),
+                                       session_path=sess_path,
+                                       max_steps=ep_length,
+                                       )
                        )
     checkpoint_callback = CheckpointCallback(save_freq=ep_length,
                                              save_path=sess_path,
                                              name_prefix='poke',
                                              )
     callbacks: List[Union[CheckpointCallback,
-                          TensorboardCallback]] = [checkpoint_callback,
+                          TensorboardCallback]] = [
+                                                   checkpoint_callback,
                                                    TensorboardCallback(),
                                                    ]
 
