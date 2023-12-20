@@ -62,7 +62,7 @@ def run_save(save):
                           "clip_range": lambda _: 0.0,
                           "n_steps": ep_length,
         }
-        model = PPO.load(file_name,
+        model = PPO.load(path=file_name,
                          env=env,
                          custom_objects=custom_objects,
                          )
@@ -73,8 +73,8 @@ def run_save(save):
         model.rollout_buffer.reset()
     else:
         print('initializing new policy')
-        model = PPO('CnnPolicy',
-                    env,
+        model = PPO(policy='CnnPolicy',
+                    env=env,
                     verbose=1,
                     n_steps=ep_length,
                     batch_size=512,
