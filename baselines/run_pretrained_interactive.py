@@ -29,7 +29,7 @@ if __name__ == '__main__':
     file_name = 'session_4da05e87_main_good/poke_439746560_steps'
 
     print('\nloading checkpoint')
-    model = PPO.load(file_name,
+    model = PPO.load(path=file_name,
                      env=env,
                      custom_objects={'lr_schedule': 0,
                                      'clip_range': 0,

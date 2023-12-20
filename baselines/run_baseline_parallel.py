@@ -35,7 +35,7 @@ if __name__ == '__main__':
     #'session_bfdca25a/poke_42532864_steps' #'session_d3033abb/poke_47579136_steps' #'session_a17cc1f5/poke_33546240_steps' #'session_e4bdca71/poke_8945664_steps' #'session_eb21989e/poke_40255488_steps' #'session_80f70ab4/poke_58982400_steps'
     if exists(file_name + '.zip'):
         print('\nloading checkpoint')
-        model = PPO.load(file_name,
+        model = PPO.load(path=file_name,
                          env=env,
                          force_reset=True,
                          )
@@ -46,8 +46,8 @@ if __name__ == '__main__':
         #model.rollout_buffer.n_envs = num_cpu
         #model.rollout_buffer.reset()
     else:
-        model = PPO('CnnPolicy',
-                    env,
+        model = PPO(policy='CnnPolicy',
+                    env=env,
                     verbose=1,
                     n_steps=ep_length,
                     batch_size=512,

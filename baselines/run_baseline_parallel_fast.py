@@ -76,7 +76,7 @@ if __name__ == '__main__':
         file_name = str(last_stepfile).replace("%s/" % str(last_stepfile), "").replace(".zip", "")
 
         print('\nloading checkpoint file=%s.zip' % file_name)
-        model = PPO.load(file_name,
+        model = PPO.load(path=file_name,
                          env=env,
                          force_reset=True,
                          )
@@ -87,8 +87,8 @@ if __name__ == '__main__':
         #model.rollout_buffer.n_envs = num_cpu
         #model.rollout_buffer.reset()
     else:
-        model = PPO('CnnPolicy',
-                    env,
+        model = PPO(policy='CnnPolicy',
+                    env=env,
                     verbose=1,
                     n_steps=ep_length // 8,
                     batch_size=128,
