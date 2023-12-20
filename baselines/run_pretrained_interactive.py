@@ -7,6 +7,7 @@ from stable_baselines3.common import env_checker
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import CheckpointCallback
+from pyboy.utils import WindowEvent
 
 def make_env(rank,
              env_conf,
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     #keyboard.on_press_key("M", toggle_agent)
     obs, info = env.reset()
     while True:
-        action = 7 # pass action
+        action = WindowEvent.PASS
         try:
             with open("agent_enabled.txt", "r") as f:
                 agent_enabled = f.readlines()[0].startswith("yes")

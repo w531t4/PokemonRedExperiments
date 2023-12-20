@@ -293,7 +293,10 @@ class RedGymEnv(Env):
 
     def run_action_on_emulator(self, action: int) -> None:
         # press button then release after some steps
-        self.pyboy.send_input(self.valid_actions[action])
+        if action == WindowEvent.PASS:
+            self.pyboy.send_input(WindowEvent.PASS)
+        else:
+            self.pyboy.send_input(self.valid_actions[action])
         # disable rendering when we don't need it
         if not self.save_video and self.headless:
             self.pyboy._rendering(False)
@@ -306,6 +309,8 @@ class RedGymEnv(Env):
                 elif action > 3 and action < 6:
                     # release button
                     self.pyboy.send_input(self.release_button[action - 4])
+                elif action == WindowEvent.PASS:
+                    pass
                 elif self.valid_actions[action] == WindowEvent.PRESS_BUTTON_START:
                     self.pyboy.send_input(WindowEvent.RELEASE_BUTTON_START)
             if self.save_video and not self.fast_video:
