@@ -35,6 +35,7 @@ class PokeRedEnv(Env):
     def __init__(self,
                  headless: bool = True,
                  save_final_state: bool = True,
+                 early_stop: bool = False,
                  action_freq: int = 24,
                  init_state: Path = Path("has_pokedex_nballs.state"),
                  max_steps: int = 2048 * 10,
@@ -49,7 +50,6 @@ class PokeRedEnv(Env):
                  reward_scale: int = 4, # previously 1
                  extra_buttons: bool = False,
                  explore_weight: int = 3, # previously 1
-                 early_stop: bool = False,
                  instance_id: str = None,
                  pyboy_bequiet: bool = True,
                  ) -> None:
