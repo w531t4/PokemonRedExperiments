@@ -33,7 +33,6 @@ class MapLocation(NamedTuple):
 class PokeRedEnv(Env):
     metadata = {"render_modes": []}
     def __init__(self,
-                 debug: bool = False,
                  headless: bool = True,
                  save_final_state: bool = True,
                  action_freq: int = 24,
@@ -44,6 +43,7 @@ class PokeRedEnv(Env):
                  fast_video: bool = True,
                  session_path: Path = Path("session_%s" % str(uuid.uuid4())[:8]),
                  gb_path: Path = Path("PokemonRed.gb"),
+                 debug: bool = False,
                  sim_frame_dist: float = 2_000_000.0,
                  use_screen_explore: bool = True,
                  reward_scale: int = 4, # previously 1
