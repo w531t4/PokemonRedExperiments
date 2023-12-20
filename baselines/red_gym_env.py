@@ -11,7 +11,13 @@ import numpy as np
 from einops import rearrange
 import matplotlib.pyplot as plt
 from skimage.transform import resize
-from pyboy import PyBoy
+import warnings
+with warnings.catch_warnings() as w:
+    warnings.filterwarnings(message=r"Using SDL2 binaries from pysdl2-dll \S+$",
+                            action="ignore",
+                            append=True,
+                            )
+    from pyboy import PyBoy
 from pyboy.logger import log_level
 import mediapy as media
 import pandas as pd
