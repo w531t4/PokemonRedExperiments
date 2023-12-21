@@ -528,7 +528,7 @@ class PokeRedEnv(Env):
             if self.step_count > 128 and self.recent_memory.sum() < (255 * 1):
                 done = True
         else:
-            done = self.step_count >= self.max_steps
+            done = self.step_count >= (self.max_steps - 1)
         #done = self.read_hp_fraction() == 0
         return done
 
