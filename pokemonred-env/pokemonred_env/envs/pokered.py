@@ -545,6 +545,7 @@ class PokeRedEnv(Env):
             out_data["location"] = location.map_name
             out_data["loc_x"] = location.x
             out_data["loc_y"] = location.y
+            out_data["loc_id"] = location.map_id
             for key, val in self.progress_reward.items():
                 out_data[key] = round(val, 2) # f' {key}: {val:5.2f}'
             out_data["sum"] = round(self.total_reward, 2) # f'{self.total_reward:5.2f}'
