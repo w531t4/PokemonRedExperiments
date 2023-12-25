@@ -52,6 +52,8 @@ class PokeRedEnv(Env):
                  explore_weight: int = 3, # previously 1
                  instance_id: str = None,
                  pyboy_bequiet: bool = True,
+                 interactive_emulation_speed: int = 6,
+                 headless_emulation_speed: int = 0,
                  **kwargs,
                  ) -> None:
         self.debug = debug
@@ -142,9 +144,9 @@ class PokeRedEnv(Env):
         self.screen = self.pyboy.botsupport_manager().screen()
 
         if not headless:
-            self.pyboy.set_emulation_speed(6)
+            self.pyboy.set_emulation_speed(interactive_emulation_speed)
         else:
-            self.pyboy.set_emulation_speed(0)
+            self.pyboy.set_emulation_speed(headless_emulation_speed)
         self.reset()
 
     def reset(self,
