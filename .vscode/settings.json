@@ -1,0 +1,11 @@
+{
+    "files.exclude": {
+        ".git/**": true,
+        "**/.pytest_cache/**": true,
+        "**/__pycache__/**": true,
+        "venv/**": true,
+        "pokemonred-env/build/**": true,
+        "pokemonred-env/dist/**": true,
+        "pokemonred-env/pokemonred_env.egg-info/**": true,
+    }
+}
