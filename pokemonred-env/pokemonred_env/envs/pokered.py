@@ -17,7 +17,7 @@ with warnings.catch_warnings() as w:
                             append=True,
                             )
     from pyboy import PyBoy
-from pyboy.logger import log_level
+from pyboy.logging import log_level
 import mediapy as media
 import pandas as pd
 from typing import Dict, Union, List, Tuple, Any, NamedTuple
