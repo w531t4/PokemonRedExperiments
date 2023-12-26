@@ -11,6 +11,6 @@ session_*
 .env
 PokemonRed.gb.state
 venv*
-pokemonred-env/**
-!pokemonred-env/pokemonred_env/**
-!pokemonred-env/setup.py
+pokemonred-env/build
+pokemonred-env/dist
+pokemonred-env/pokemonred_env.egg-info

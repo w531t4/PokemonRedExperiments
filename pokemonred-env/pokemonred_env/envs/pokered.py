@@ -46,7 +46,7 @@ class PokeRedEnv(Env):
                  gb_path: Path = Path("PokemonRed.gb"),
                  debug: bool = False,
                  sim_frame_dist: float = 2_000_000.0,
-                 use_screen_explore: bool = True,
+                 #use_screen_explore: bool = True,
                  reward_scale: int = 4, # previously 1
                  extra_buttons: bool = False,
                  explore_weight: int = 3, # previously 1
@@ -54,6 +54,7 @@ class PokeRedEnv(Env):
                  pyboy_bequiet: bool = True,
                  interactive_emulation_speed: int = 6,
                  headless_emulation_speed: int = 0,
+                 static_coord_weight: int = 5,
                  **kwargs,
                  ) -> None:
         self.debug = debug
@@ -73,7 +74,7 @@ class PokeRedEnv(Env):
         self.downsample_factor = 2
         self.frame_stacks = 3
         self.explore_weight = explore_weight
-        self.use_screen_explore = use_screen_explore
+        #self.use_screen_explore = use_screen_explore
         self.similar_frame_dist = sim_frame_dist
         self.reward_scale = reward_scale
         self.extra_buttons = extra_buttons
@@ -140,9 +141,10 @@ class PokeRedEnv(Env):
                            hide_window=pyboy_bequiet,
             )
 
-        self.seen_coords: Dict[str, int] = {}
+        self.seen_coords: Dict[MapLocation, int] = {}
         self.screen = self.pyboy.botsupport_manager().screen()
-
+        self.static_coord_reward = 0
+        self.static_coord_weight = static_coord_weight
         if not headless:
             self.pyboy.set_emulation_speed(interactive_emulation_speed)
         else:
@@ -160,10 +162,9 @@ class PokeRedEnv(Env):
         with open(self.init_state, "rb") as f:
             self.pyboy.load_state(f)
 
-        if self.use_screen_explore:
-            self.init_knn()
-        else:
-            self.seen_coords = {}
+        #if self.use_screen_explore:
+        self.init_knn()
+        self.seen_coords = {}
 
         self.recent_memory = np.zeros((self.output_shape[1]*self.memory_height,
                                        3,
@@ -203,6 +204,7 @@ class PokeRedEnv(Env):
         self.total_reward = sum([val for _, val in self.progress_reward.items()])
         self.reset_count += 1
         self.did_knn_count_change = False
+        self.static_coord_reward = 0
         return self.render(), {}
 
     def init_knn(self) -> None:
@@ -283,11 +285,12 @@ class PokeRedEnv(Env):
 
         curr_knn_count = str(round(self.knn_index.get_current_count(), 5))
         if battle_indicator == 0:
-            if self.use_screen_explore:
-                self.update_frame_knn_index(obs_flat)
-            else:
-                self.update_seen_coords(location=location)
+            #if self.use_screen_explore:
+            self.update_frame_knn_index(obs_flat)
         self.did_knn_count_change = str(round(self.knn_index.get_current_count(), 5)) != curr_knn_count
+        is_new_coordinate = self.update_seen_coords(location=location)
+        if not self.did_knn_count_change and is_new_coordinate:
+            self.static_coord_reward += self.static_coord_weight
         self.update_heal_reward(current_health=after_health,
                                 last_health=before_health,
                                 before_party_size=before_party_size,
@@ -375,15 +378,6 @@ class PokeRedEnv(Env):
                            party_size: int,
                            ) -> None:
         levels = self.get_my_pokemon_levels()
-
-        expl: Tuple[str, int]
-        if self.use_screen_explore:
-            expl = ('frames',
-                    # self.khn_index.get_current_count returns int
-                    self.knn_index.get_current_count())
-        else:
-            expl = ('coord_count',
-                    len(self.seen_coords))
         self.agent_stats.append({'step': self.step_count,
                                  'x': location.x,
                                  'y': location.y,
@@ -395,7 +389,9 @@ class PokeRedEnv(Env):
                                  'levels_sum': sum(levels),
                                  'ptypes': self.read_party(),
                                  'hp': self.read_hp_fraction(),
-                                 expl[0]: expl[1],
+                                 'frames': self.knn_index.get_current_count(),
+                                 'coord_count': len(self.seen_coords),
+                                 'static_coord_reward': self.static_coord_reward,
                                  'deaths': self.died_count,
                                  'badge': self.get_badges(),
                                  'event': self.progress_reward['event'],
@@ -433,13 +429,18 @@ class PokeRedEnv(Env):
 
     def update_seen_coords(self,
                            location: MapLocation,
-                           ) -> None:
-        coord_string = f"x:{location.x} y:{location.y} m:{location.map_id}"
+                           ) -> bool:
+        #coord_string = f"x:{location.x} y:{location.y} m:{location.map_id}"
+        #coord_stinrg = (location.x, location.y, location.map_id)
         if self.get_levels_sum() >= 22 and not self.levels_satisfied:
             self.levels_satisfied = True
             self.base_explore = len(self.seen_coords)
 
-        self.seen_coords[coord_string] = self.step_count
+        action_taken = False
+        if location not in self.seen_coords:
+            action_taken = True
+        self.seen_coords[location] = self.step_count
+        return action_taken
 
     @staticmethod
     def get_reward_delta(old: Tuple[float, float, float],
@@ -637,7 +638,7 @@ class PokeRedEnv(Env):
         pre_rew = self.explore_weight * 0.005
         post_rew = self.explore_weight * 0.01
         # self.khn_index.get_current_count returns int
-        cur_size = self.knn_index.get_current_count() if self.use_screen_explore else len(self.seen_coords)
+        cur_size = self.knn_index.get_current_count() # if self.use_screen_explore else len(self.seen_coords)
         base = (self.base_explore if self.levels_satisfied else cur_size) * pre_rew
         post = (cur_size if self.levels_satisfied else 0) * post_rew
         return base + post
@@ -727,7 +728,7 @@ class PokeRedEnv(Env):
                         #'op_poke': self.reward_scale*self.max_opponent_poke * 800,
                         #'money': self.reward_scale* money * 3,
                         #'seen_poke': self.reward_scale * seen_poke_count * 400,
-                        'explore': self.reward_scale * self.get_knn_reward(),
+                        'explore': self.reward_scale * (self.get_knn_reward() + self.static_coord_reward),
         }
 
         return state_scores
